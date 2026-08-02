@@ -197,7 +197,7 @@ import json
 import time
 import requests
 
-
+#Gene identification
 def identify_gene_and_organism(sequence: str, seq_type: str) -> dict:
     """Identifies exact gene and organism for raw sequences using NCBI BLAST REST API with required headers."""
     program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
