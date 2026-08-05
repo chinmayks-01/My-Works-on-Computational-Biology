@@ -14,7 +14,7 @@ import py3Dmol
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
-
+from stmol import showmol
 
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
@@ -786,8 +786,8 @@ if st.button("Run Pipeline", type="primary"):
                     "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
                 )
 
-            # --- ORF DIAGRAM MAP INTEGRATION (WITHOUT SLIDER) ---
-            st.header("Open Reading Frame (ORF) Diagram Map")
+            # --- ORF DIAGRAM MAP & DIRECT SEQUENCE VIEWER ---
+            st.header("Open Reading Frame (ORF) Diagram Map & Sequences")
             if seq_type in ["DNA", "RNA"]:
                 dna_for_orf = sequence.replace("U", "T")
 
@@ -797,28 +797,26 @@ if st.button("Run Pipeline", type="primary"):
                 if orf_list:
                     render_orf_diagram(orf_list, len(dna_for_orf))
 
-                    df_orfs = pd.DataFrame(orf_list)
-                    st.dataframe(
-                        df_orfs.drop(columns=["Protein Sequence"]),
-                        use_container_width=True,
-                    )
-
-                    selected_orf_idx = st.selectbox(
-                        "Select ORF to inspect sequence details:",
-                        options=df_orfs.index,
-                        format_func=lambda x: f"ORF {x+1} | Strand: {df_orfs.loc[x, 'Strand']} | Frame: {df_orfs.loc[x, 'Frame']} | Length: {df_orfs.loc[x, 'Length (aa)']} aa",
-                    )
-
-                    chosen_protein = df_orfs.loc[
-                        selected_orf_idx, "Protein Sequence"
-                    ]
-                    st.subheader(
-                        f"Selected ORF #{selected_orf_idx+1} Translation"
-                    )
-                    st.markdown(
-                        color_protein_sequence_block(chosen_protein),
-                        unsafe_allow_html=True,
-                    )
+                    st.subheader("Detected ORFs Sequence Data")
+                    for idx, orf in enumerate(orf_list):
+                        with st.expander(
+                            f"ORF #{idx+1} | Strand: {orf['Strand']} | Frame: {orf['Frame']} | Coordinates: {orf['Start (nt)']} - {orf['End (nt)']} nt | Length: {orf['Length (aa)']} aa"
+                        ):
+                            st.markdown(
+                                f"**Protein Sequence:**", unsafe_allow_html=True
+                            )
+                            st.markdown(
+                                color_protein_sequence_block(
+                                    orf["Protein Sequence"]
+                                ),
+                                unsafe_allow_html=True,
+                            )
+                            st.text_area(
+                                f"Raw Protein Sequence #{idx+1}",
+                                orf["Protein Sequence"],
+                                height=80,
+                                key=f"orf_seq_{idx}",
+                            )
                 else:
                     st.info(
                         "No Open Reading Frames found meeting the minimum length criteria."
