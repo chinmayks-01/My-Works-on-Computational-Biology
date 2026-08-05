@@ -603,139 +603,108 @@ inject_custom_ui_theme()
 
 st.markdown(
     """
-    <style>
-    /* Main Layout Header Container */
-    .header-container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.5rem 1rem;
-        margin-bottom: 1.5rem;
-    }
+<style>
+.header-container {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    margin-bottom: 1.5rem;
+}
 
-    /* Glow animation for title text */
-    @keyframes titleTextGlow {
-        0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
-        50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
-        100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
-    }
-    .title-glow-text {
-        background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        animation: titleTextGlow 4s ease-in-out infinite;
-        display: inline-block;
-    }
+@keyframes titleTextGlow {
+    0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+    50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
+    100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+}
 
-    /* Minimalist DNA to Protein Vertical Animation CSS */
-    .central-dogma-anim {
-        width: 120px;
-        height: 140px;
-        overflow: visible;
-    }
+.title-glow-text {
+    background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: titleTextGlow 4s ease-in-out infinite;
+    display: inline-block;
+}
 
-    /* Pulsing & Flow Animations */
-    @keyframes pulseGlow {
-        0%, 100% { opacity: 0.4; filter: drop-shadow(0 0 2px #38bdf8); }
-        50% { opacity: 0.9; filter: drop-shadow(0 0 8px #38bdf8); }
-    }
+.central-dogma-anim {
+    width: 100px;
+    height: 120px;
+    overflow: visible;
+}
 
-    @keyframes flowVertical {
-        0% { stroke-dashoffset: 120; }
-        100% { stroke-dashoffset: 0; }
-    }
+@keyframes pulseGlow {
+    0%, 100% { opacity: 0.4; filter: drop-shadow(0 0 2px #38bdf8); }
+    50% { opacity: 0.9; filter: drop-shadow(0 0 8px #38bdf8); }
+}
 
-    @keyframes nodeFloat {
-        0%, 100% { transform: translateY(0px) scale(1); }
-        50% { transform: translateY(-4px) scale(1.1); }
-    }
+@keyframes flowVertical {
+    0% { stroke-dashoffset: 120; }
+    100% { stroke-dashoffset: 0; }
+}
 
-    .dna-strand {
-        stroke-dasharray: 120;
-        animation: flowVertical 6s linear infinite;
-    }
+@keyframes nodeFloat {
+    0%, 100% { transform: translateY(0px) scale(1); }
+    50% { transform: translateY(-4px) scale(1.1); }
+}
 
-    .rna-flow {
-        stroke-dasharray: 8 6;
-        animation: flowVertical 3s linear infinite;
-    }
+.rna-flow {
+    stroke-dasharray: 8 6;
+    animation: flowVertical 3s linear infinite;
+}
 
-    .protein-fold {
-        animation: pulseGlow 3s ease-in-out infinite;
-    }
+.protein-fold {
+    animation: pulseGlow 3s ease-in-out infinite;
+}
 
-    .floating-node {
-        animation: nodeFloat 2.5s ease-in-out infinite alternate;
-    }
-    </style>
+.floating-node {
+    animation: nodeFloat 2.5s ease-in-out infinite alternate;
+}
+</style>
 
-    <div class="header-container">
-        <!-- Title Left -->
-        <div>
-            <h1 style='font-size: 2.8rem; font-weight: 800; margin: 0; color: #f8fafc;'>
-                Welcome to 
-                <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
-            </h1>
-        </div>
-
-        <!-- Animation Right -->
-        <div style="flex-shrink: 0;">
-            <svg class="central-dogma-anim" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <!-- DNA Gradient -->
-                    <linearGradient id="dnaGrad" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#38bdf8"/>
-                        <stop offset="100%" stop-color="#818cf8"/>
-                    </linearGradient>
-
-                    <!-- RNA Gradient -->
-                    <linearGradient id="rnaGrad" x1="0" y1="40" x2="0" y2="85" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#818cf8"/>
-                        <stop offset="100%" stop-color="#c084fc"/>
-                    </linearGradient>
-
-                    <!-- Protein Gradient -->
-                    <linearGradient id="proteinGrad" x1="0" y1="85" x2="0" y2="130" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stop-color="#c084fc"/>
-                        <stop offset="100%" stop-color="#fb7185"/>
-                    </linearGradient>
-                </defs>
-
-                <!-- STEP 1: DNA Double Helix (Top) -->
-                <g class="protein-fold">
-                    <!-- Strand A -->
-                    <path d="M35 10 Q50 20 65 10 T95 10" stroke="url(#dnaGrad)" stroke-width="2.5" stroke-linecap="round" fill="none" />
-                    <!-- Strand B -->
-                    <path d="M35 25 Q50 15 65 25 T95 25" stroke="url(#dnaGrad)" stroke-width="2.5" stroke-linecap="round" opacity="0.7" fill="none" />
-                    <!-- Rungs -->
-                    <line x1="43" y1="13" x2="43" y2="22" stroke="#38bdf8" stroke-width="1.5" opacity="0.6"/>
-                    <line x1="57" y1="18" x2="57" y2="20" stroke="#818cf8" stroke-width="1.5" opacity="0.6"/>
-                    <line x1="72" y1="12" x2="72" y2="23" stroke="#38bdf8" stroke-width="1.5" opacity="0.6"/>
-                </g>
-
-                <!-- Transition Flow Dots/Line (DNA to RNA) -->
-                <path d="M50 30 L50 45" stroke="url(#dnaGrad)" stroke-width="2" stroke-dasharray="3 3" opacity="0.5"/>
-
-                <!-- STEP 2: Single Strand RNA (Middle Flow) -->
-                <path class="rna-flow" d="M50 45 C65 55 35 65 50 75 C60 82 40 88 50 95" stroke="url(#rnaGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-
-                <!-- Transition Flow Line (RNA to Protein) -->
-                <path d="M50 95 L50 102" stroke="url(#rnaGrad)" stroke-width="2" stroke-dasharray="2 2" opacity="0.5"/>
-
-                <!-- STEP 3: Folded Secondary Structure / Protein Nodes (Bottom) -->
-                <g class="floating-node">
-                    <!-- Protein Backbone Ribbon -->
-                    <path class="protein-fold" d="M38 112 C30 102 65 100 62 115 C60 128 35 125 48 132 C62 138 72 120 52 118" stroke="url(#proteinGrad)" stroke-width="3" fill="none" stroke-linecap="round"/>
-                    <!-- Residue Nodes -->
-                    <circle cx="38" cy="112" r="3" fill="#38bdf8"/>
-                    <circle cx="62" cy="115" r="3" fill="#c084fc"/>
-                    <circle cx="48" cy="132" r="3.5" fill="#fb7185"/>
-                    <circle cx="68" cy="122" r="2.5" fill="#f43f5e"/>
-                </g>
-            </svg>
-        </div>
+<div class="header-container">
+    <div style="flex: 1; min-width: 320px;">
+        <h1 style='font-size: 2.8rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
+            Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
+        </h1>
     </div>
-    """,
+    <div style="flex-shrink: 0; width: 120px; text-align: right;">
+        <svg class="central-dogma-anim" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+                <linearGradient id="dnaGrad" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#38bdf8"/>
+                    <stop offset="100%" stop-color="#818cf8"/>
+                </linearGradient>
+                <linearGradient id="rnaGrad" x1="0" y1="40" x2="0" y2="85" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#818cf8"/>
+                    <stop offset="100%" stop-color="#c084fc"/>
+                </linearGradient>
+                <linearGradient id="proteinGrad" x1="0" y1="85" x2="0" y2="130" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stop-color="#c084fc"/>
+                    <stop offset="100%" stop-color="#fb7185"/>
+                </linearGradient>
+            </defs>
+            <g class="protein-fold">
+                <path d="M35 10 Q50 20 65 10 T95 10" stroke="url(#dnaGrad)" stroke-width="2.5" stroke-linecap="round" fill="none" />
+                <path d="M35 25 Q50 15 65 25 T95 25" stroke="url(#dnaGrad)" stroke-width="2.5" stroke-linecap="round" opacity="0.7" fill="none" />
+                <line x1="43" y1="13" x2="43" y2="22" stroke="#38bdf8" stroke-width="1.5" opacity="0.6"/>
+                <line x1="57" y1="18" x2="57" y2="20" stroke="#818cf8" stroke-width="1.5" opacity="0.6"/>
+                <line x1="72" y1="12" x2="72" y2="23" stroke="#38bdf8" stroke-width="1.5" opacity="0.6"/>
+            </g>
+            <path d="M50 30 L50 45" stroke="url(#dnaGrad)" stroke-width="2" stroke-dasharray="3 3" opacity="0.5"/>
+            <path class="rna-flow" d="M50 45 C65 55 35 65 50 75 C60 82 40 88 50 95" stroke="url(#rnaGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            <path d="M50 95 L50 102" stroke="url(#rnaGrad)" stroke-width="2" stroke-dasharray="2 2" opacity="0.5"/>
+            <g class="floating-node">
+                <path class="protein-fold" d="M38 112 C30 102 65 100 62 115 C60 128 35 125 48 132 C62 138 72 120 52 118" stroke="url(#proteinGrad)" stroke-width="3" fill="none" stroke-linecap="round"/>
+                <circle cx="38" cy="112" r="3" fill="#38bdf8"/>
+                <circle cx="62" cy="115" r="3" fill="#c084fc"/>
+                <circle cx="48" cy="132" r="3.5" fill="#fb7185"/>
+                <circle cx="68" cy="122" r="2.5" fill="#f43f5e"/>
+            </g>
+        </svg>
+    </div>
+</div>
+""",
     unsafe_allow_html=True,
 )
 
