@@ -714,12 +714,6 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 <g class="rna-strand">
 <!-- Solid Wavy Single Backbone -->
 <path d="M 50 195 C 75 220, 45 260, 70 285" stroke="url(#unifiedGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-<!-- Connected Horizontal Bases -->
-<line x1="59" y1="205" x2="74" y2="205" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
-<line x1="64" y1="220" x2="79" y2="220" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
-<line x1="55" y1="240" x2="70" y2="240" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
-<line x1="50" y1="260" x2="65" y2="260" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
-<line x1="62" y1="275" x2="77" y2="275" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
 </g>
 
 <!-- TRANSLATION ARROW -->
