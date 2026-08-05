@@ -341,7 +341,19 @@ def color_protein_sequence_block(seq: str) -> str:
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 inject_custom_ui_theme()
 
-st.title("Welcome to ProtCraft Wizard🧙‍♂️")
+st.markdown(
+    """
+    <h1 style='font-size: 2.8rem; font-weight: 800; margin-bottom: 1.2rem; color: #f8fafc;'>
+        Welcome to 
+        <span style='background: linear-gradient(90deg, #38bdf8 0%, #a855f7 100%);
+                     -webkit-background-clip: text;
+                     -webkit-text-fill-color: transparent;'>
+            ProtCraft Wizard
+        </span> 🧙‍♂️
+    </h1>
+    """,
+    unsafe_allow_html=True
+)
 
 
 st.sidebar.header("Settings")
