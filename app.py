@@ -10,10 +10,10 @@ from Bio import Entrez, SeqIO
 from Bio.Seq import Seq
 from Bio.SeqUtils import gc_fraction
 
-# --- Configuration & Setup ---
+
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
-# Standard Amino Acid Full Names Mapping
+
 AA_NAMES = {
     'A': 'Alanine', 'C': 'Cysteine', 'D': 'Aspartic Acid', 'E': 'Glutamic Acid',
     'F': 'Phenylalanine', 'G': 'Glycine', 'H': 'Histidine', 'I': 'Isoleucine',
@@ -22,7 +22,7 @@ AA_NAMES = {
     'T': 'Threonine', 'V': 'Valine', 'W': 'Tryptophan', 'Y': 'Tyrosine'
 }
 
-# --- Core Logic Functions ---
+
 
 def fetch_sequence(input_query: str, uploaded_file) -> str:
     """Parses an uploaded FASTA file, fetches an Accession ID, or processes raw text."""
@@ -36,7 +36,7 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
     if not input_query:
         return ""
         
-    # Check if Accession ID
+    
     if any(char.isdigit() for char in input_query) and len(input_query) < 20:
         for db in ["nucleotide", "protein"]:
             try:
@@ -49,7 +49,7 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
         st.error("Could not fetch sequence for the given Accession ID.")
         return ""
     
-    # Raw sequence
+    
     return input_query.replace(" ", "").replace("\n", "").upper()
 
 
@@ -71,8 +71,7 @@ def identify_sequence(seq: str):
         return None, None, None
 
     gc_content = gc_fraction(seq) * 100 if seq_type in ["DNA", "RNA"] else None
-
-    # BLAST Identification
+    
     program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
     database = "nt" if seq_type in ["DNA", "RNA"] else "nr"
     base_url = "https://blast.ncbi.nlm.nih.gov/Blast.cgi"
@@ -137,21 +136,50 @@ def fetch_pdb_similar(protein_seq: str):
     url = "https://search.rcsb.org/rcsbsearch/v2/query"
     query = {
         "query": {
-            "type": "terminal", "service": "sequence",
-            "parameters": {"evalue_cutoff": 1, "identity_cutoff": 0.3, "target": "pdb_protein_sequence", "value": protein_seq}
+            "type": "terminal",
+            "service": "sequence",
+            "parameters": {
+                "evalue_cutoff": 1,
+                "identity_cutoff": 0.3,
+                "target": "pdb_protein_sequence",
+                "value": protein_seq
+            },
         },
         "return_type": "polymer_entity",
-        "request_options": {"paginate": {"start": 0, "rows": 5}, "scoring_strategy": "sequence"}
+        "request_options": {
+            "paginate": {"start": 0, "rows": 5},
+            "scoring_strategy": "sequence"
+        }
     }
     
-    response = requests.post(url, json=query)
     pdb_matches = []
-    if response.status_code == 200:
+    
+    try:
+       
+        response = requests.post(url, json=query, timeout=15)
+        response.raise_for_status()
+        
         results = response.json().get("result_set", [])
         for item in results:
             pdb_id = item["identifier"].split("_")[0]
-            match_pct = item.get("score", 0) * 100
-            pdb_matches.append({"PDB ID": pdb_id, "Sequence Identity (%)": f"{match_pct:.2f}"})
+            
+            score = item.get("score", 0.0)
+            match_pct = score * 100 if score <= 1.0 else score
+            
+            pdb_matches.append({
+                "PDB ID": pdb_id,
+                "Sequence Identity (%)": f"{match_pct:.2f}"
+            })
+            
+    except requests.exceptions.Timeout:
+        st.error("RCSB PDB API request timed out. Please try again.")
+    except requests.exceptions.ConnectionError:
+        st.error("Unable to connect to RCSB PDB. Please check your network connection.")
+    except requests.exceptions.HTTPError as err:
+        st.error(f"RCSB PDB API returned an error: {err}")
+    except Exception as e:
+        st.error(f"An unexpected error occurred: {e}")
+        
     return pdb_matches
 
 
@@ -183,16 +211,15 @@ def predict_structure_esm(protein_seq: str):
     return None
 
 
-# --- STREAMLIT USER INTERFACE ---
 
-st.title("🧬 Sequence to Structure Analysis Pipeline")
+st.title("Welcome to The ProtCraft Wizard🧙🏻‍♂️")
 
-# Sidebar Configuration
+
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input("NCBI Entrez Email", value="your.email@example.com")
 Entrez.email = user_email
 
-# User Input Section
+
 st.header("1. Input Sequence")
 input_option = st.radio("Choose Input Method:", ("Raw Sequence / Accession ID", "Upload FASTA File"))
 
@@ -213,7 +240,7 @@ if st.button("Run Pipeline", type="primary"):
     else:
         st.success("Sequence successfully loaded!")
         
-        # --- Section 2: Sequence Identification & BLAST ---
+        
         st.header("2. Identification & BLAST Analysis")
         with st.spinner("Analyzing sequence type and querying BLAST..."):
             seq_type, gc_content, gene_name = identify_sequence(sequence)
@@ -225,7 +252,7 @@ if st.button("Run Pipeline", type="primary"):
             col3.metric("Sequence Length", f"{len(sequence)} bp/aa")
             st.info(f"**Predicted Gene Name (BLAST):** {gene_name}")
 
-            # --- Section 3: Central Dogma Pipeline ---
+            
             st.header("3. Transcription & Translation")
             transcript, protein_seq = central_dogma_pipeline(sequence, seq_type)
             
@@ -236,7 +263,7 @@ if st.button("Run Pipeline", type="primary"):
             with st.expander("View Translated Protein Sequence", expanded=True):
                 st.text_area("Protein Sequence", protein_seq, height=100)
 
-            # --- Section 4: Protein Analysis & PDB Matches ---
+            
             st.header("4. Protein Analysis")
             col_a, col_b = st.columns(2)
             
@@ -257,7 +284,7 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            # --- Section 5: Structure Prediction & 3D Visualization ---
+            
             st.header("5. 3D Structure Prediction")
             if len(protein_seq) > 400:
                 st.warning("Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to sequences ≤ 400 residues.")
@@ -268,7 +295,7 @@ if st.button("Run Pipeline", type="primary"):
                 if pdb_data:
                     st.success("3D Structure predicted successfully!")
                     
-                    # 3D Viewer Render
+                    
                     view = py3Dmol.view(width=800, height=500)
                     view.addModel(pdb_data, "pdb")
                     view.setStyle({'cartoon': {'color': 'spectrum'}})
@@ -276,7 +303,7 @@ if st.button("Run Pipeline", type="primary"):
                     st.subheader("Interactive 3D Structure Viewer")
                     showmol(view, height=500, width=800)
                     
-                    # Download Option
+                    
                     st.download_button(
                         label="Download PDB File",
                         data=pdb_data,
