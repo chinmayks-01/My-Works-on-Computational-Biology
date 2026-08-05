@@ -624,7 +624,7 @@ animation: titleTextGlow 4s ease-in-out infinite;
 display: inline-block;
 }
 .central-dogma-anim-horizontal {
-width: 320px;
+width: 360px;
 height: 80px;
 overflow: visible;
 }
@@ -636,9 +636,9 @@ overflow: visible;
 0% { stroke-dashoffset: 40; }
 100% { stroke-dashoffset: 0; }
 }
-@keyframes proteinFloatHorizontal {
-0%, 100% { transform: translateY(0px); }
-50% { transform: translateY(-3px); }
+@keyframes globularPulse {
+0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px #c084fc); }
+50% { transform: scale(1.04); filter: drop-shadow(0 0 8px #fb7185); }
 }
 .dna-glow {
 animation: pulseGlow 4s ease-in-out infinite;
@@ -647,8 +647,9 @@ animation: pulseGlow 4s ease-in-out infinite;
 stroke-dasharray: 6 4;
 animation: rnaFlowHorizontal 2s linear infinite;
 }
-.floating-protein-h {
-animation: proteinFloatHorizontal 3s ease-in-out infinite;
+.globular-protein {
+transform-origin: 290px 40px;
+animation: globularPulse 3s ease-in-out infinite;
 }
 </style>
 <div class="header-container">
@@ -658,72 +659,68 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 </h1>
 </div>
 <div style="flex-shrink: 0; text-align: right;">
-<svg class="central-dogma-anim-horizontal" viewBox="0 0 320 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg class="central-dogma-anim-horizontal" viewBox="0 0 360 80" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs>
-<linearGradient id="dnaGradH" x1="10" y1="0" x2="130" y2="0" gradientUnits="userSpaceOnUse">
+<linearGradient id="dnaGradH" x1="10" y1="0" x2="140" y2="0" gradientUnits="userSpaceOnUse">
 <stop offset="0%" stop-color="#38bdf8"/>
 <stop offset="100%" stop-color="#818cf8"/>
 </linearGradient>
-<linearGradient id="mrnaGradH" x1="135" y1="0" x2="215" y2="0" gradientUnits="userSpaceOnUse">
+<linearGradient id="mrnaGradH" x1="148" y1="0" x2="230" y2="0" gradientUnits="userSpaceOnUse">
 <stop offset="0%" stop-color="#818cf8"/>
 <stop offset="100%" stop-color="#c084fc"/>
 </linearGradient>
-<linearGradient id="proteinGradH" x1="220" y1="0" x2="310" y2="0" gradientUnits="userSpaceOnUse">
+<linearGradient id="proteinGradH" x1="240" y1="0" x2="350" y2="0" gradientUnits="userSpaceOnUse">
 <stop offset="0%" stop-color="#c084fc"/>
 <stop offset="100%" stop-color="#fb7185"/>
 </linearGradient>
 </defs>
 
-<!-- 1. HORIZONTAL DNA: 2 HALF-HELICES AT ENDS + 3 FULL HELICES IN MIDDLE -->
+<!-- 1. TRUE HORIZONTAL DNA HELIX (3 full turns + half-helix end caps) -->
 <g class="dna-glow">
-<!-- Base Pair Rungs -->
-<!-- Half-helix 1 (left) -->
-<line x1="17" y1="31" x2="17" y2="49" stroke="#38bdf8" stroke-width="1.5" opacity="0.7"/>
-<!-- Full Helix 1 -->
-<line x1="32" y1="23" x2="32" y2="57" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
-<line x1="47" y1="31" x2="47" y2="49" stroke="#60a5fa" stroke-width="1.5" opacity="0.7"/>
-<!-- Full Helix 2 -->
-<line x1="62" y1="23" x2="62" y2="57" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
-<line x1="77" y1="31" x2="77" y2="49" stroke="#818cf8" stroke-width="1.5" opacity="0.7"/>
-<!-- Full Helix 3 -->
-<line x1="92" y1="23" x2="92" y2="57" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
-<line x1="107" y1="31" x2="107" y2="49" stroke="#a78bfa" stroke-width="1.5" opacity="0.7"/>
-<!-- Half-helix 2 (right) -->
-<line x1="122" y1="23" x2="122" y2="57" stroke="#a78bfa" stroke-width="1.8" opacity="0.8"/>
+<line x1="22" y1="28" x2="22" y2="52" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
+<line x1="39" y1="23" x2="39" y2="57" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
+<line x1="56" y1="28" x2="56" y2="52" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
+<line x1="73" y1="23" x2="73" y2="57" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
+<line x1="90" y1="28" x2="90" y2="52" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
+<line x1="107" y1="23" x2="107" y2="57" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
+<line x1="124" y1="28" x2="124" y2="52" stroke="#a78bfa" stroke-width="1.8" opacity="0.8"/>
 
-<!-- Strand 1 (Sine Wave) -->
-<path d="M 10 40 Q 25 20, 40 40 T 70 40 T 100 40 Q 115 20, 130 40" stroke="url(#dnaGradH)" stroke-width="2.8" stroke-linecap="round" fill="none"/>
-<!-- Strand 2 (Inverted Sine Wave) -->
-<path d="M 10 40 Q 25 60, 40 40 T 70 40 T 100 40 Q 115 60, 130 40" stroke="url(#dnaGradH)" stroke-width="2.8" stroke-linecap="round" fill="none" opacity="0.85"/>
+<!-- Strand 1 -->
+<path d="M 15 40 C 20 20, 32 20, 39 40 C 46 60, 58 60, 65 40 C 72 20, 84 20, 91 40 C 98 60, 110 60, 117 40 C 124 20, 133 20, 138 40" stroke="url(#dnaGradH)" stroke-width="3" stroke-linecap="round" fill="none"/>
+<!-- Strand 2 (Interleaved) -->
+<path d="M 15 40 C 20 60, 32 60, 39 40 C 46 20, 58 20, 65 40 C 72 60, 84 60, 91 40 C 98 20, 110 20, 117 40 C 124 60, 133 60, 138 40" stroke="url(#dnaGradH)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.75"/>
 </g>
 
 <!-- TRANSITION 1: DNA -> mRNA -->
-<path d="M 132 40 L 142 40" stroke="url(#dnaGradH)" stroke-width="2" stroke-dasharray="3 2" opacity="0.6"/>
+<path d="M 141 40 L 150 40" stroke="url(#dnaGradH)" stroke-width="2" stroke-dasharray="3 2" opacity="0.6"/>
 
-<!-- 2. HORIZONTAL mRNA WITH CODON BASE NODES -->
+<!-- 2. HORIZONTAL mRNA WITH CODON NODES -->
 <g>
-<path class="rna-flow-h" d="M 143 40 C 155 22, 170 58, 185 40 C 195 28, 205 50, 215 40" stroke="url(#mrnaGradH)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-<line x1="152" y1="32" x2="152" y2="24" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round"/>
-<circle cx="152" cy="23" r="2.2" fill="#38bdf8"/>
-<line x1="172" y1="48" x2="172" y2="56" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round"/>
-<circle cx="172" cy="57" r="2.2" fill="#c084fc"/>
-<line x1="190" y1="34" x2="190" y2="26" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/>
-<circle cx="190" cy="25" r="2.2" fill="#fb7185"/>
-<line x1="206" y1="45" x2="206" y2="53" stroke="#e879f9" stroke-width="1.8" stroke-linecap="round"/>
-<circle cx="206" cy="54" r="2.2" fill="#facc15"/>
+<path class="rna-flow-h" d="M 151 40 C 162 24, 175 56, 190 40 C 200 28, 212 50, 222 40" stroke="url(#mrnaGradH)" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+<line x1="163" y1="32" x2="163" y2="24" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="163" cy="23" r="2.2" fill="#38bdf8"/>
+<line x1="180" y1="48" x2="180" y2="56" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="180" cy="57" r="2.2" fill="#c084fc"/>
+<line x1="198" y1="34" x2="198" y2="26" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="198" cy="25" r="2.2" fill="#fb7185"/>
+<line x1="214" y1="45" x2="214" y2="53" stroke="#e879f9" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="214" cy="54" r="2.2" fill="#facc15"/>
 </g>
 
 <!-- TRANSITION 2: mRNA -> PROTEIN -->
-<path d="M 216 40 L 226 40" stroke="url(#mrnaGradH)" stroke-width="2" stroke-dasharray="2 2" opacity="0.6"/>
+<path d="M 223 40 L 232 40" stroke="url(#mrnaGradH)" stroke-width="2" stroke-dasharray="2 2" opacity="0.6"/>
 
-<!-- 3. HORIZONTAL FOLDED PROTEIN RIBBON & AMINO ACID NODES -->
-<g class="floating-protein-h">
-<path d="M 227 40 C 235 20, 255 60, 265 30 C 275 10, 290 65, 295 35 C 300 20, 312 45, 318 40" stroke="url(#proteinGradH)" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-<circle cx="227" cy="40" r="3.5" fill="#38bdf8"/>
-<circle cx="250" cy="45" r="4" fill="#a855f7"/>
-<circle cx="265" cy="30" r="3.5" fill="#e879f9"/>
-<circle cx="290" cy="52" r="4.5" fill="#fb7185"/>
-<circle cx="318" cy="40" r="3.5" fill="#facc15"/>
+<!-- 3. GLOBULAR FOLDED PROTEIN CLUSTER (RIGHT) -->
+<g class="globular-protein">
+<!-- Compact Globular Loops / Tertiary Domain -->
+<path d="M 233 40 C 243 20, 268 20, 278 40 C 288 60, 263 65, 253 45 C 248 35, 263 28, 273 38 C 283 48, 298 30, 313 40 C 328 50, 343 30, 353 40" stroke="url(#proteinGradH)" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+<!-- Core Amino Acid Residue Clusters -->
+<circle cx="233" cy="40" r="3.5" fill="#38bdf8"/>
+<circle cx="260" cy="26" r="4" fill="#a855f7"/>
+<circle cx="270" cy="52" r="3.5" fill="#e879f9"/>
+<circle cx="295" cy="35" r="4.5" fill="#fb7185"/>
+<circle cx="328" cy="48" r="3.8" fill="#c084fc"/>
+<circle cx="353" cy="40" r="3.5" fill="#facc15"/>
 </g>
 </svg>
 </div>
