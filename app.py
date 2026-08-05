@@ -606,157 +606,139 @@ st.set_page_config(
 # inject_custom_ui_theme()
 
 html_content = """<style>
-/* Base Layout (Desktop First) */
 .header-container {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: flex-start; 
-    width: 100%;
-    margin-bottom: 1.5rem;
+display: flex;
+flex-direction: row;
+justify-content: space-between;
+align-items: flex-start;
+width: 100%;
+margin-bottom: 1.5rem;
 }
-
 .title-container {
-    flex: 1; 
-    padding-top: 10px;
+flex: 1;
+padding-top: 10px;
+min-width: 0; /* Critical for mobile: prevents flexbox from crushing the text */
 }
-
 .main-title {
-    font-size: 2.8rem; 
-    font-weight: 800; 
-    margin: 0; 
-    color: #f8fafc; 
-    white-space: nowrap;
+font-size: 2.8rem;
+font-weight: 800;
+margin: 0;
+color: #f8fafc;
+line-height: 1.2;
 }
-
 .svg-wrapper {
-    flex-shrink: 0; 
-    text-align: right; 
-    margin-left: 10px;
+flex-shrink: 0;
+text-align: right;
+margin-left: 15px;
 }
-
 .central-dogma-anim-vertical {
-    width: 90px;
-    height: 280px;
-    overflow: visible;
+width: 90px;
+height: 280px;
+overflow: visible;
 }
-
-/* Animations */
 @keyframes titleTextGlow {
-    0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
-    50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
-    100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
+100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
 }
-
 .title-glow-text {
-    background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: titleTextGlow 4s ease-in-out infinite;
-    display: inline-block;
+background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+animation: titleTextGlow 4s ease-in-out infinite;
+display: inline-block;
 }
-
 @keyframes pulseGlow {
-    0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 3px #38bdf8); }
-    50% { opacity: 1; filter: drop-shadow(0 0 8px #c084fc); }
+0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 3px #38bdf8); }
+50% { opacity: 1; filter: drop-shadow(0 0 8px #c084fc); }
 }
-
 @keyframes rnaFlowVertical {
-    0% { stroke-dashoffset: 40; }
-    100% { stroke-dashoffset: 0; }
+0% { stroke-dashoffset: 40; }
+100% { stroke-dashoffset: 0; }
 }
-
 @keyframes globularPulse {
-    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px #c084fc); }
-    50% { transform: scale(1.04); filter: drop-shadow(0 0 8px #fb7185); }
+0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px #c084fc); }
+50% { transform: scale(1.04); filter: drop-shadow(0 0 8px #fb7185); }
 }
-
 .dna-glow { animation: pulseGlow 4s ease-in-out infinite; }
 .rna-flow-v { stroke-dasharray: 6 4; animation: rnaFlowVertical 2s linear infinite; }
 .globular-protein { transform-origin: 50px 290px; animation: globularPulse 3s ease-in-out infinite; }
 
-/* 📱 MOBILE RESPONSIVENESS (Screens smaller than 768px) */
+/* 📱 MOBILE RESPONSIVENESS */
 @media (max-width: 768px) {
-    .main-title {
-        font-size: 1.8rem; /* Shrink title */
-        white-space: normal; /* Allow text to wrap to the next line */
-        line-height: 1.2;
-    }
-    .central-dogma-anim-vertical {
-        width: 60px; /* Scale down SVG width */
-        height: 180px; /* Scale down SVG height */
-    }
-    .svg-wrapper {
-        margin-left: 5px; /* Reduce margin */
-    }
+.main-title {
+font-size: 1.8rem;
+}
+.central-dogma-anim-vertical {
+width: 60px;
+height: 180px;
+}
+.svg-wrapper {
+margin-left: 5px;
+}
 }
 </style>
 
 <div class="header-container">
-    <div class="title-container">
-        <h1 class="main-title">
-            Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
-        </h1>
-    </div>
-    
-    <div class="svg-wrapper">
-        <svg class="central-dogma-anim-vertical" viewBox="0 0 100 360" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="dnaGradV" x1="0" y1="10" x2="0" y2="140" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stop-color="#38bdf8"/>
-                    <stop offset="100%" stop-color="#818cf8"/>
-                </linearGradient>
-                <linearGradient id="mrnaGradV" x1="0" y1="148" x2="0" y2="230" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stop-color="#818cf8"/>
-                    <stop offset="100%" stop-color="#c084fc"/>
-                </linearGradient>
-                <linearGradient id="proteinGradV" x1="0" y1="240" x2="0" y2="350" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stop-color="#c084fc"/>
-                    <stop offset="100%" stop-color="#fb7185"/>
-                </linearGradient>
-            </defs>
-
-            <g class="dna-glow">
-                <line x1="38" y1="22" x2="62" y2="22" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
-                <line x1="38" y1="39" x2="62" y2="39" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
-                <line x1="38" y1="56" x2="62" y2="56" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
-                <line x1="38" y1="73" x2="62" y2="73" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
-                <line x1="38" y1="90" x2="62" y2="90" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
-                <line x1="38" y1="107" x2="62" y2="107" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
-                <line x1="38" y1="124" x2="62" y2="124" stroke="#a78bfa" stroke-width="1.8" opacity="0.8"/>
-                <path d="M 50 15 C 30 20, 30 32, 50 39 C 70 46, 70 58, 50 65 C 30 72, 30 84, 50 91 C 70 98, 70 110, 50 117 C 30 124, 30 133, 50 138" stroke="url(#dnaGradV)" stroke-width="3" stroke-linecap="round" fill="none"/>
-                <path d="M 50 15 C 70 20, 70 32, 50 39 C 30 46, 30 58, 50 65 C 70 72, 70 84, 50 91 C 30 98, 30 110, 50 117 C 70 124, 70 133, 50 138" stroke="url(#dnaGradV)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.75"/>
-            </g>
-
-            <path d="M 50 141 L 50 150" stroke="url(#dnaGradV)" stroke-width="2" stroke-dasharray="3 2" opacity="0.6"/>
-
-            <g>
-                <path class="rna-flow-v" d="M 50 151 C 34 162, 66 175, 50 190 C 38 200, 60 212, 50 222" stroke="url(#mrnaGradV)" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-                <line x1="42" y1="163" x2="34" y2="163" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round"/>
-                <circle cx="33" cy="163" r="2.2" fill="#38bdf8"/>
-                <line x1="58" y1="180" x2="66" y2="180" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round"/>
-                <circle cx="67" cy="180" r="2.2" fill="#c084fc"/>
-                <line x1="44" y1="198" x2="36" y2="198" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/>
-                <circle cx="35" cy="198" r="2.2" fill="#fb7185"/>
-                <line x1="55" y1="214" x2="63" y2="214" stroke="#e879f9" stroke-width="1.8" stroke-linecap="round"/>
-                <circle cx="64" cy="214" r="2.2" fill="#facc15"/>
-            </g>
-
-            <path d="M 50 223 L 50 232" stroke="url(#mrnaGradV)" stroke-width="2" stroke-dasharray="2 2" opacity="0.6"/>
-
-            <g class="globular-protein">
-                <path d="M 50 233 C 30 243, 30 268, 50 278 C 70 288, 75 263, 55 253 C 45 248, 38 263, 48 273 C 58 283, 40 298, 50 313 C 60 328, 40 343, 50 353" stroke="url(#proteinGradV)" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-                <circle cx="50" cy="233" r="3.5" fill="#38bdf8"/>
-                <circle cx="36" cy="260" r="4" fill="#a855f7"/>
-                <circle cx="62" cy="270" r="3.5" fill="#e879f9"/>
-                <circle cx="45" cy="295" r="4.5" fill="#fb7185"/>
-                <circle cx="58" cy="328" r="3.8" fill="#c084fc"/>
-                <circle cx="50" cy="353" r="3.5" fill="#facc15"/>
-            </g>
-        </svg>
-    </div>
+<div class="title-container">
+<h1 class="main-title">
+Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
+</h1>
+</div>
+<div class="svg-wrapper">
+<svg class="central-dogma-anim-vertical" viewBox="0 0 100 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="dnaGradV" x1="0" y1="10" x2="0" y2="140" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#38bdf8"/>
+<stop offset="100%" stop-color="#818cf8"/>
+</linearGradient>
+<linearGradient id="mrnaGradV" x1="0" y1="148" x2="0" y2="230" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#818cf8"/>
+<stop offset="100%" stop-color="#c084fc"/>
+</linearGradient>
+<linearGradient id="proteinGradV" x1="0" y1="240" x2="0" y2="350" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#c084fc"/>
+<stop offset="100%" stop-color="#fb7185"/>
+</linearGradient>
+</defs>
+<g class="dna-glow">
+<line x1="38" y1="22" x2="62" y2="22" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
+<line x1="38" y1="39" x2="62" y2="39" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
+<line x1="38" y1="56" x2="62" y2="56" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
+<line x1="38" y1="73" x2="62" y2="73" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
+<line x1="38" y1="90" x2="62" y2="90" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
+<line x1="38" y1="107" x2="62" y2="107" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
+<line x1="38" y1="124" x2="62" y2="124" stroke="#a78bfa" stroke-width="1.8" opacity="0.8"/>
+<path d="M 50 15 C 30 20, 30 32, 50 39 C 70 46, 70 58, 50 65 C 30 72, 30 84, 50 91 C 70 98, 70 110, 50 117 C 30 124, 30 133, 50 138" stroke="url(#dnaGradV)" stroke-width="3" stroke-linecap="round" fill="none"/>
+<path d="M 50 15 C 70 20, 70 32, 50 39 C 30 46, 30 58, 50 65 C 70 72, 70 84, 50 91 C 30 98, 30 110, 50 117 C 70 124, 70 133, 50 138" stroke="url(#dnaGradV)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.75"/>
+</g>
+<path d="M 50 141 L 50 150" stroke="url(#dnaGradV)" stroke-width="2" stroke-dasharray="3 2" opacity="0.6"/>
+<g>
+<path class="rna-flow-v" d="M 50 151 C 34 162, 66 175, 50 190 C 38 200, 60 212, 50 222" stroke="url(#mrnaGradV)" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+<line x1="42" y1="163" x2="34" y2="163" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="33" cy="163" r="2.2" fill="#38bdf8"/>
+<line x1="58" y1="180" x2="66" y2="180" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="67" cy="180" r="2.2" fill="#c084fc"/>
+<line x1="44" y1="198" x2="36" y2="198" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="35" cy="198" r="2.2" fill="#fb7185"/>
+<line x1="55" y1="214" x2="63" y2="214" stroke="#e879f9" stroke-width="1.8" stroke-linecap="round"/>
+<circle cx="64" cy="214" r="2.2" fill="#facc15"/>
+</g>
+<path d="M 50 223 L 50 232" stroke="url(#mrnaGradV)" stroke-width="2" stroke-dasharray="2 2" opacity="0.6"/>
+<g class="globular-protein">
+<path d="M 50 233 C 30 243, 30 268, 50 278 C 70 288, 75 263, 55 253 C 45 248, 38 263, 48 273 C 58 283, 40 298, 50 313 C 60 328, 40 343, 50 353" stroke="url(#proteinGradV)" stroke-width="3.2" fill="none" stroke-linecap="round"/>
+<circle cx="50" cy="233" r="3.5" fill="#38bdf8"/>
+<circle cx="36" cy="260" r="4" fill="#a855f7"/>
+<circle cx="62" cy="270" r="3.5" fill="#e879f9"/>
+<circle cx="45" cy="295" r="4.5" fill="#fb7185"/>
+<circle cx="58" cy="328" r="3.8" fill="#c084fc"/>
+<circle cx="50" cy="353" r="3.5" fill="#facc15"/>
+</g>
+</svg>
+</div>
 </div>"""
 
+# Safely render the unindented string
 st.markdown(html_content, unsafe_allow_html=True)
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
