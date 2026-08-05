@@ -7,7 +7,8 @@ from collections import Counter
 import streamlit as st
 import py3Dmol
 from stmol import showmol
-from Bio import Entrez, SeqIO, NCBIWWW
+from Bio import Entrez, SeqIO
+from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
 from Bio.SeqUtils import gc_fraction
 
