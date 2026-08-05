@@ -11,7 +11,7 @@ from Bio import Entrez, SeqIO
 from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
 from Bio.SeqUtils import gc_fraction
-
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
@@ -164,6 +164,208 @@ def inject_custom_ui_theme():
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
+
+def render_protein_3d_viewer(
+    pdb_input: str, is_pdb_id: bool = True, height: int = 480
+):
+    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js.
+
+    Parameters:
+    - pdb_input: PDB ID string (e.g. '1A2C') OR raw PDB file contents.
+    - is_pdb_id: True if passing a 4-letter PDB ID, False if passing raw PDB string (e.g., from ESMFold).
+    - height: Height of the canvas in pixels.
+    """
+    # Sanitize string input for JavaScript injection if raw PDB data is passed
+    if is_pdb_id:
+        fetch_js = f"v.addModelAsPdbId('{pdb_input.strip()}');"
+    else:
+        escaped_pdb = (
+            pdb_input.replace("\\", "\\\\")
+            .replace("`", "\\`")
+            .replace("${", "\\${")
+        )
+        fetch_js = f"v.addModel(`{escaped_pdb}`, 'pdb');"
+
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
+        <style>
+            * {{
+                box-sizing: border-box;
+                margin: 0;
+                padding: 0;
+            }}
+            body, html {{
+                width: 100%;
+                height: 100%;
+                overflow: hidden;
+                background-color: transparent;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            }}
+            
+            /* Glassmorphism Outer Wrapper */
+            .viewer-wrapper {{
+                position: relative;
+                width: 100%;
+                height: {height}px;
+                background: rgba(10, 10, 12, 0.6);
+                backdrop-filter: blur(12px);
+                border: 1px solid rgba(255, 255, 255, 0.1);
+                border-radius: 14px;
+                overflow: hidden;
+            }}
+
+            /* Canvas Container - touch-action: none prevents parent page scrolling during 3D rotation */
+            #viewport {{
+                width: 100%;
+                height: 100%;
+                touch-action: none;
+            }}
+
+            /* Mobile Floating Quick Action Toolbar */
+            .controls-bar {{
+                position: absolute;
+                bottom: 12px;
+                left: 50%;
+                transform: translateX(-50%);
+                display: flex;
+                gap: 6px;
+                background: rgba(0, 0, 0, 0.75);
+                backdrop-filter: blur(8px);
+                padding: 6px 12px;
+                border-radius: 30px;
+                border: 1px solid rgba(255, 255, 255, 0.15);
+                z-index: 10;
+                width: max-content;
+                max-width: 92%;
+                overflow-x: auto;
+            }}
+
+            .control-btn {{
+                background: rgba(255, 255, 255, 0.08);
+                color: #e2e8f0;
+                border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 20px;
+                padding: 6px 12px;
+                font-size: 11px;
+                font-weight: 600;
+                cursor: pointer;
+                white-space: nowrap;
+                transition: all 0.2s ease;
+                -webkit-tap-highlight-color: transparent;
+            }}
+
+            .control-btn:active, .control-btn.active {{
+                background: rgba(56, 189, 248, 0.25);
+                border-color: #38bdf8;
+                color: #38bdf8;
+            }}
+
+            /* Mobile Gesture Hint Badge */
+            .gesture-hint {{
+                position: absolute;
+                top: 10px;
+                right: 12px;
+                background: rgba(0, 0, 0, 0.5);
+                color: rgba(255, 255, 255, 0.5);
+                font-size: 10px;
+                padding: 4px 8px;
+                border-radius: 6px;
+                pointer-events: none;
+                backdrop-filter: blur(4px);
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="viewer-wrapper">
+            <div class="gesture-hint">👆 1-Finger Rotate | 🤏 Pinch Zoom</div>
+            <div id="viewport"></div>
+            
+            <div class="controls-bar">
+                <button class="control-btn active" onclick="setStyle('cartoon')">Cartoon</button>
+                <button class="control-btn" onclick="setStyle('stick')">Sticks</button>
+                <button class="control-btn" onclick="setStyle('sphere')">Sphere</button>
+                <button class="control-btn" onclick="toggleSurface()">Surface</button>
+                <button class="control-btn" onclick="resetView()">Reset</button>
+            </div>
+        </div>
+
+        <script>
+            let viewer = null;
+            let currentModel = null;
+            let surfaceObj = null;
+            let currentStyle = 'cartoon';
+
+            document.addEventListener("DOMContentLoaded", function() {{
+                let element = document.getElementById('viewport');
+                let config = {{ backgroundColor: '0x000000', backgroundAlpha: 0.0 }};
+                
+                viewer = $3Dmol.createViewer(element, config);
+                let v = viewer;
+
+                {fetch_js}
+                
+                currentModel = v.getModel();
+                setStyle('cartoon');
+                v.zoomTo();
+                v.render();
+            }});
+
+            function setStyle(type) {{
+                if (!viewer) return;
+                currentStyle = type;
+                
+                // Update active state on buttons
+                document.querySelectorAll('.control-btn').forEach(btn => {{
+                    if(['Cartoon', 'Sticks', 'Sphere'].includes(btn.innerText)) {{
+                        btn.classList.remove('active');
+                    }}
+                }});
+
+                viewer.setStyle({{}}, {{}}); // Clear existing styles
+
+                if (type === 'cartoon') {{
+                    viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
+                }} else if (type === 'stick') {{
+                    viewer.setStyle({{}}, {{stick: {{colorscheme: 'amino'}}}});
+                }} else if (type === 'sphere') {{
+                    viewer.setStyle({{}}, {{sphere: {{scale: 0.28, colorscheme: 'spectrum'}}}});
+                }}
+
+                viewer.render();
+            }}
+
+            function toggleSurface() {{
+                if (!viewer) return;
+                let btn = event.target;
+                
+                if (surfaceObj) {{
+                    viewer.removeSurface(surfaceObj);
+                    surfaceObj = null;
+                    btn.classList.remove('active');
+                }} else {{
+                    btn.classList.add('active');
+                    surfaceObj = viewer.addSurface($3Dmol.SurfaceType.MS, {{
+                        opacity: 0.6,
+                        color: 'white'
+                    }});
+                }}
+                viewer.render();
+            }}
+
+            function resetView() {{
+                if (!viewer) return;
+                viewer.zoomTo();
+                viewer.render();
+            }}
+        </script>
+    </body>
+    </html>
+    """
+    components.html(html_code, height=height + 10, scrolling=False)
 
 def fetch_sequence(input_query: str, uploaded_file) -> str:
     """Parses an uploaded FASTA file, fetches an Accession ID, or processes raw text."""
@@ -500,7 +702,7 @@ if st.button("Run Pipeline", type="primary"):
                     st.write("No significant RCSB PDB matches found.")
 
             
-            st.header("5. 3D Structure Prediction")
+            st.header("5. Protein Structure Visualization")
             if len(protein_seq) > 400:
                 st.warning("Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to sequences ≤ 400 residues.")
             else:
@@ -509,14 +711,9 @@ if st.button("Run Pipeline", type="primary"):
 
                 if pdb_data:
                     st.success("3D Structure predicted successfully!")
-                    
-                    
-                    view = py3Dmol.view(width=800, height=500)
-                    view.addModel(pdb_data, "pdb")
-                    view.setStyle({'cartoon': {'color': 'spectrum'}})
-                    view.zoomTo()
+
                     st.subheader("Interactive 3D Structure Viewer")
-                    showmol(view, height=500, width=800)
+                    render_protein_3d_viewer(pdb_input=pdb_data, is_pdb_id=False, height=500)
                     
                     
                     st.download_button(
