@@ -166,20 +166,38 @@ def inject_custom_ui_theme():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-def auto_scroll():
-    """Injects a tiny Javascript snippet to smoothly scroll the page down during execution."""
+ddef auto_scroll():
+    """Aggressive Javascript injection to force Streamlit to scroll down."""
     scroll_js = """
     <script>
-        // Add a slight delay to ensure Streamlit has finished rendering the new elements to the DOM
-        setTimeout(function() {
-            const parentDoc = window.parent.document;
-            // Target the modern Streamlit scroll container
-            const container = parentDoc.querySelector('[data-testid="stAppViewContainer"]') || parentDoc.querySelector('.main');
-            
-            if (container) {
-                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+        function forceScroll() {
+            try {
+                const parent = window.parent.document;
+                // Streamlit uses different scroll containers depending on the version and layout
+                const targets = [
+                    parent.querySelector('[data-testid="stAppViewContainer"]'),
+                    parent.querySelector('.main'),
+                    parent.querySelector('.stApp'),
+                    parent.documentElement,
+                    parent.body
+                ];
+                
+                for (let target of targets) {
+                    if (target && target.scrollHeight > target.clientHeight) {
+                        target.scrollTo({ top: target.scrollHeight, behavior: 'smooth' });
+                        return; // Stop once we successfully find and scroll the active container
+                    }
+                }
+            } catch (e) {
+                console.log("Auto-scroll failed: ", e);
             }
-        }, 300); // 300 millisecond delay gives the UI time to draw
+        }
+        
+        // Fire at staggered intervals to catch the DOM as heavy elements (like DataFrames and 3D viewers) render
+        setTimeout(forceScroll, 100);
+        setTimeout(forceScroll, 600);
+        setTimeout(forceScroll, 1200);
+        setTimeout(forceScroll, 2000);
     </script>
     """
     components.html(scroll_js, height=0, width=0)
