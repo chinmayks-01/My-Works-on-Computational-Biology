@@ -12,6 +12,7 @@ from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
 from Bio.SeqUtils import gc_fraction
 import streamlit.components.v1 as components
+from textwrap import dedent
 
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
@@ -601,9 +602,8 @@ st.set_page_config(
 )
 inject_custom_ui_theme()
 
-# Use textwrap.dedent to prevent Streamlit from treating HTML as a markdown code block
-header_html = dedent("""
-<style>
+st.markdown(
+    """<style>
 .header-container {
     display: flex;
     flex-direction: row;
@@ -726,11 +726,9 @@ header_html = dedent("""
             </g>
         </svg>
     </div>
-</div>
-""")
-
-st.markdown(header_html, unsafe_allow_html=True)
-
+</div>""",
+    unsafe_allow_html=True,
+)
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
     "NCBI Entrez Email", value="your.email@example.com"
