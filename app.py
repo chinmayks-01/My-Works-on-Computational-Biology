@@ -342,41 +342,42 @@ inject_custom_ui_theme()
 st.markdown(
     """
     <style>
-    /* Keyframe animation for the breathing light behind the text */
-    @keyframes textGlowBreathing {
+    /* Breathing Glow Aura strictly behind the Title Text */
+    @keyframes titleTextGlow {
         0% {
-            filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.3)) 
-                    drop-shadow(0px 0px 15px rgba(168, 85, 247, 0.2));
+            /* Tight, softer glow */
+            filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)) 
+                    drop-shadow(0px 0px 16px rgba(37, 99, 235, 0.25));
         }
         50% {
-            filter: drop-shadow(0px 0px 22px rgba(56, 189, 248, 0.85)) 
-                    drop-shadow(0px 0px 40px rgba(168, 85, 247, 0.7));
+            /* Expanded, intense light area behind letters */
+            filter: drop-shadow(0px 0px 28px rgba(56, 189, 248, 0.95)) 
+                    drop-shadow(0px 0px 55px rgba(37, 99, 235, 0.85));
         }
         100% {
-            filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.3)) 
-                    drop-shadow(0px 0px 15px rgba(168, 85, 247, 0.2));
+            filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)) 
+                    drop-shadow(0px 0px 16px rgba(37, 99, 235, 0.25));
         }
     }
 
-    .glowing-title-text {
-        background: linear-gradient(90deg, #38bdf8 0%, #a855f7 100%);
+    .title-glow-text {
+        background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
-        animation: textGlowBreathing 4s ease-in-out infinite;
+        animation: titleTextGlow 4s ease-in-out infinite;
         display: inline-block;
     }
     </style>
 
     <h1 style='font-size: 2.8rem; font-weight: 800; margin-bottom: 1.2rem; color: #f8fafc;'>
         Welcome to 
-        <span class='glowing-title-text'>
+        <span class='title-glow-text'>
             ProtCraft Wizard
         </span> 🧙‍♂️
     </h1>
     """,
     unsafe_allow_html=True
 )
-
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input("NCBI Entrez Email", value="your.email@example.com")
 Entrez.email = user_email
