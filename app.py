@@ -173,7 +173,7 @@ def render_protein_3d_viewer(
 
     Parameters:
     - pdb_input: PDB ID string (e.g. '1A2C') OR raw PDB file contents.
-    - is_pdb_id: True if passing a 4-letter PDB ID, False if passing raw PDB string (e.g., from ESMFold).
+    - is_pdb_id: True if passing a 4-letter PDB ID, False if passing raw PDB string (e.g., from OmegaFold).
     - height: Height of the canvas in pixels.
     """
     # Sanitize string input for JavaScript injection if raw PDB data is passed
@@ -540,13 +540,24 @@ def analyze_amino_acids(protein_seq: str):
     return pd.DataFrame(data)
 
 
-def predict_structure_esm(protein_seq: str):
-    """Predicts 3D structure using ESMFold API."""
-    url = "https://api.esmatlas.com/foldSequence/v1/pdb/"
-    res = requests.post(url, data=protein_seq, headers={"Content-Type": "text/plain"})
-    if res.status_code == 200:
-        return res.text
-    return None
+def predict_structure_omegafold(protein_seq: str, api_url: str = "YOUR_OMEGAFOLD_API_ENDPOINT"):
+    """Sends sequence to OmegaFold backend or public API endpoint and returns PDB string."""
+    try:
+        payload = {"sequence": protein_seq.strip()}
+        # If using a public or custom OmegaFold API endpoint
+        response = requests.post(
+            f"{api_url}/predict", json=payload, timeout=300
+        )
+
+        if response.status_code == 200:
+            res_json = response.json()
+            return res_json.get("pdb_data")
+        else:
+            st.error(f"OmegaFold server error (Status {response.status_code})")
+            return None
+    except Exception as e:
+        st.error(f"Failed to connect to OmegaFold service: {str(e)}")
+        return None
 
 def predict_structure_colabfold(
     sequence: str, api_url: str = "YOUR_COLABFOLD_API_ENDPOINT"
@@ -858,7 +869,7 @@ if st.button("Run Pipeline", type="primary"):
             engine = st.radio(
                 "Select Prediction Engine:",
                 options=[
-                    "ESMFold (Ultra-Fast | <400 aa)",
+                    "OmegaFold (Fast | AI-Based)",
                     "ColabFold / AlphaFold2 (High-Accuracy | Up to 1200 aa)",
                 ],
                 horizontal=True,
@@ -867,14 +878,11 @@ if st.button("Run Pipeline", type="primary"):
 
             pdb_data = None
 
-            if "ESMFold" in engine:
-                if len(protein_seq) > 400:
-                    st.warning(
-                        "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to shorter sequences."
-                    )
-                else:
-                    with st.spinner("Predicting 3D structure using ESMFold..."):
-                        pdb_data = predict_structure_esm(protein_seq)
+            if "OmegaFold" in engine:
+                with st.spinner("Predicting 3D structure using OmegaFold..."):
+                    # Replace URL below with your active OmegaFold backend endpoint if applicable
+                    OMEGAFOLD_API = "https://your-omegafold-backend-endpoint.ngrok-free.app"
+                    pdb_data = predict_structure_omegafold(protein_seq, api_url=OMEGAFOLD_API)
             else:
                 with st.spinner(
                     "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
@@ -901,8 +909,8 @@ if st.button("Run Pipeline", type="primary"):
                     file_name="predicted_structure.pdb",
                     mime="chemical/x-pdb",
                 )
-            elif "ESMFold" in engine and len(protein_seq) <= 400:
-                st.error("Failed to predict 3D structure using ESMFold API.")
+            elif "OmegaFold" in engine:
+                st.error("Failed to predict 3D structure using OmegaFold API. Check backend connection.")
             elif "ColabFold" in engine:
                 st.error(
                     "Failed to predict 3D structure using ColabFold API. Check backend connection."
