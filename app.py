@@ -14,7 +14,7 @@ import py3Dmol
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
-from stmol import showmol
+
 
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
