@@ -604,6 +604,7 @@ inject_custom_ui_theme()
 st.markdown(
     """
 <style>
+/* Main Header Layout Container */
 .header-container {
     display: flex;
     flex-direction: row;
@@ -613,6 +614,7 @@ st.markdown(
     margin-bottom: 1.5rem;
 }
 
+/* Glowing text effect for title */
 @keyframes titleTextGlow {
     0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
     50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
@@ -627,38 +629,40 @@ st.markdown(
     display: inline-block;
 }
 
+/* Enlarged Animation Canvas */
 .central-dogma-anim {
-    width: 100px;
-    height: 120px;
+    width: 140px;
+    height: 220px;
     overflow: visible;
 }
 
+/* Animations */
 @keyframes pulseGlow {
-    0%, 100% { opacity: 0.4; filter: drop-shadow(0 0 2px #38bdf8); }
-    50% { opacity: 0.9; filter: drop-shadow(0 0 8px #38bdf8); }
+    0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 3px #38bdf8); }
+    50% { opacity: 1; filter: drop-shadow(0 0 10px #c084fc); }
 }
 
-@keyframes flowVertical {
-    0% { stroke-dashoffset: 120; }
+@keyframes rnaFlowVertical {
+    0% { stroke-dashoffset: 40; }
     100% { stroke-dashoffset: 0; }
 }
 
-@keyframes nodeFloat {
-    0%, 100% { transform: translateY(0px) scale(1); }
-    50% { transform: translateY(-4px) scale(1.1); }
+@keyframes proteinFloat {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-5px); }
+}
+
+.dna-glow {
+    animation: pulseGlow 4s ease-in-out infinite;
 }
 
 .rna-flow {
-    stroke-dasharray: 8 6;
-    animation: flowVertical 3s linear infinite;
+    stroke-dasharray: 6 4;
+    animation: rnaFlowVertical 2s linear infinite;
 }
 
-.protein-fold {
-    animation: pulseGlow 3s ease-in-out infinite;
-}
-
-.floating-node {
-    animation: nodeFloat 2.5s ease-in-out infinite alternate;
+.floating-protein {
+    animation: proteinFloat 3s ease-in-out infinite;
 }
 </style>
 
@@ -668,38 +672,87 @@ st.markdown(
             Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
         </h1>
     </div>
-    <div style="flex-shrink: 0; width: 120px; text-align: right;">
-        <svg class="central-dogma-anim" viewBox="0 0 100 140" fill="none" xmlns="http://www.w3.org/2000/svg">
+    
+    <div style="flex-shrink: 0; text-align: right;">
+        <svg class="central-dogma-anim" viewBox="0 0 120 220" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <linearGradient id="dnaGrad" x1="0" y1="0" x2="0" y2="40" gradientUnits="userSpaceOnUse">
+                <!-- DNA Gradient (Cyan to Indigo) -->
+                <linearGradient id="dnaGrad" x1="0" y1="10" x2="0" y2="80" gradientUnits="userSpaceOnUse">
                     <stop offset="0%" stop-color="#38bdf8"/>
                     <stop offset="100%" stop-color="#818cf8"/>
                 </linearGradient>
-                <linearGradient id="rnaGrad" x1="0" y1="40" x2="0" y2="85" gradientUnits="userSpaceOnUse">
+
+                <!-- mRNA Gradient (Indigo to Purple) -->
+                <linearGradient id="mrnaGrad" x1="0" y1="90" x2="0" y2="155" gradientUnits="userSpaceOnUse">
                     <stop offset="0%" stop-color="#818cf8"/>
                     <stop offset="100%" stop-color="#c084fc"/>
                 </linearGradient>
-                <linearGradient id="proteinGrad" x1="0" y1="85" x2="0" y2="130" gradientUnits="userSpaceOnUse">
+
+                <!-- Protein Gradient (Purple to Rose) -->
+                <linearGradient id="proteinGrad" x1="0" y1="160" x2="0" y2="215" gradientUnits="userSpaceOnUse">
                     <stop offset="0%" stop-color="#c084fc"/>
                     <stop offset="100%" stop-color="#fb7185"/>
                 </linearGradient>
             </defs>
-            <g class="protein-fold">
-                <path d="M35 10 Q50 20 65 10 T95 10" stroke="url(#dnaGrad)" stroke-width="2.5" stroke-linecap="round" fill="none" />
-                <path d="M35 25 Q50 15 65 25 T95 25" stroke="url(#dnaGrad)" stroke-width="2.5" stroke-linecap="round" opacity="0.7" fill="none" />
-                <line x1="43" y1="13" x2="43" y2="22" stroke="#38bdf8" stroke-width="1.5" opacity="0.6"/>
-                <line x1="57" y1="18" x2="57" y2="20" stroke="#818cf8" stroke-width="1.5" opacity="0.6"/>
-                <line x1="72" y1="12" x2="72" y2="23" stroke="#38bdf8" stroke-width="1.5" opacity="0.6"/>
+
+            <!-- 1. PROPER DNA DOUBLE HELIX (TOP) -->
+            <g class="dna-glow">
+                <!-- Base Pair Rungs -->
+                <line x1="42" y1="20" x2="78" y2="20" stroke="#38bdf8" stroke-width="1.8" opacity="0.8" />
+                <line x1="36" y1="28" x2="84" y2="28" stroke="#60a5fa" stroke-width="2" opacity="0.9" />
+                <line x1="42" y1="36" x2="78" y2="36" stroke="#818cf8" stroke-width="1.8" opacity="0.8" />
+
+                <line x1="42" y1="54" x2="78" y2="54" stroke="#818cf8" stroke-width="1.8" opacity="0.8" />
+                <line x1="36" y1="62" x2="84" y2="62" stroke="#a78bfa" stroke-width="2" opacity="0.9" />
+                <line x1="42" y1="70" x2="78" y2="70" stroke="#c084fc" stroke-width="1.8" opacity="0.8" />
+
+                <!-- Strand A (Left-to-Right Wave) -->
+                <path d="M 60 10 C 95 22, 95 43, 60 45 C 25 47, 25 68, 60 80" 
+                      stroke="url(#dnaGrad)" stroke-width="3" stroke-linecap="round" fill="none" />
+
+                <!-- Strand B (Right-to-Left Inverted Wave) -->
+                <path d="M 60 10 C 25 22, 25 43, 60 45 C 95 47, 95 68, 60 80" 
+                      stroke="url(#dnaGrad)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8" />
             </g>
-            <path d="M50 30 L50 45" stroke="url(#dnaGrad)" stroke-width="2" stroke-dasharray="3 3" opacity="0.5"/>
-            <path class="rna-flow" d="M50 45 C65 55 35 65 50 75 C60 82 40 88 50 95" stroke="url(#rnaGrad)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
-            <path d="M50 95 L50 102" stroke="url(#rnaGrad)" stroke-width="2" stroke-dasharray="2 2" opacity="0.5"/>
-            <g class="floating-node">
-                <path class="protein-fold" d="M38 112 C30 102 65 100 62 115 C60 128 35 125 48 132 C62 138 72 120 52 118" stroke="url(#proteinGrad)" stroke-width="3" fill="none" stroke-linecap="round"/>
-                <circle cx="38" cy="112" r="3" fill="#38bdf8"/>
-                <circle cx="62" cy="115" r="3" fill="#c084fc"/>
-                <circle cx="48" cy="132" r="3.5" fill="#fb7185"/>
-                <circle cx="68" cy="122" r="2.5" fill="#f43f5e"/>
+
+            <!-- TRANSITION: DNA -> mRNA -->
+            <path d="M 60 81 L 60 91" stroke="url(#dnaGrad)" stroke-width="2" stroke-dasharray="3 3" opacity="0.6" />
+
+            <!-- 2. mRNA SINGLE STRAND WITH BASES (MIDDLE) -->
+            <g>
+                <!-- Backbone Strand -->
+                <path class="rna-flow" d="M 60 91 C 82 104, 38 118, 60 133 C 75 143, 45 146, 60 154" 
+                      stroke="url(#mrnaGrad)" stroke-width="2.8" fill="none" stroke-linecap="round" />
+
+                <!-- Codon Base Sticks & Nodes -->
+                <line x1="68" y1="99" x2="75" y2="97" stroke="#818cf8" stroke-width="2" stroke-linecap="round" />
+                <circle cx="76" cy="97" r="2.2" fill="#38bdf8" />
+
+                <line x1="52" y1="111" x2="45" y2="113" stroke="#a855f7" stroke-width="2" stroke-linecap="round" />
+                <circle cx="44" cy="113" r="2.2" fill="#c084fc" />
+
+                <line x1="48" y1="123" x2="41" y2="122" stroke="#c084fc" stroke-width="2" stroke-linecap="round" />
+                <circle cx="40" cy="122" r="2.2" fill="#fb7185" />
+
+                <line x1="66" y1="137" x2="73" y2="136" stroke="#e879f9" stroke-width="2" stroke-linecap="round" />
+                <circle cx="74" cy="136" r="2.2" fill="#facc15" />
+            </g>
+
+            <!-- TRANSITION: mRNA -> PROTEIN -->
+            <path d="M 60 155 L 60 165" stroke="url(#mrnaGrad)" stroke-width="2" stroke-dasharray="2 2" opacity="0.6" />
+
+            <!-- 3. FOLDED PROTEIN STRUCTURE & RESIDUES (BOTTOM) -->
+            <g class="floating-protein">
+                <!-- Ribbon Backbone -->
+                <path d="M 45 171 C 30 161, 85 159, 80 179 C 75 197, 35 187, 50 203 C 62 215, 85 199, 60 213" 
+                      stroke="url(#proteinGrad)" stroke-width="3.5" fill="none" stroke-linecap="round" />
+
+                <!-- Amino Acid Residue Spheres -->
+                <circle cx="45" cy="171" r="4" fill="#38bdf8" />
+                <circle cx="80" cy="179" r="4" fill="#a855f7" />
+                <circle cx="42" cy="191" r="3.5" fill="#e879f9" />
+                <circle cx="50" cy="203" r="4.5" fill="#fb7185" />
+                <circle cx="75" cy="205" r="3.5" fill="#facc15" />
             </g>
         </svg>
     </div>
