@@ -537,23 +537,11 @@ def analyze_amino_acids(protein_seq: str):
 
 
 def predict_structure_esm(protein_seq: str):
-    """Sends sequence to the official ESMFold API endpoint with error handling."""
     url = "https://api.esmatlas.com/foldSequence/v1/pdb/"
-    try:
-        res = requests.post(
-            url, 
-            data=protein_seq.strip(), 
-            headers={"Content-Type": "text/plain"},
-            timeout=30
-        )
-        if res.status_code == 200:
-            return res.text
-        else:
-            st.warning(f"ESMFold API returned status code {res.status_code}. The public Meta server might be busy or down.")
-            return None
-    except requests.exceptions.RequestException as e:
-        st.warning(f"Connection error to ESMFold API: {e}")
-        return None
+    res = requests.post(
+        url, data=protein_seq, headers={"Content-Type": "text/plain"}
+    )
+    return res.text if res.status_code == 200 else None
 
 
 def color_protein_sequence_block(seq: str) -> str:
