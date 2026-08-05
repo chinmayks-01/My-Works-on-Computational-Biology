@@ -646,13 +646,12 @@ transform-origin: 60px 80px;
 animation: spinDna 5s linear infinite;
 }
 
-@keyframes translateRna {
-0% { stroke-dashoffset: 40; }
-100% { stroke-dashoffset: 0; }
+@keyframes swayRna {
+0%, 100% { transform: translateX(0px); }
+50% { transform: translateX(3px); }
 }
-.rna-backbone {
-stroke-dasharray: 8 6;
-animation: translateRna 1.5s linear infinite;
+.rna-strand {
+animation: swayRna 3s ease-in-out infinite;
 }
 
 @keyframes pulseProtein {
@@ -711,16 +710,16 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 <polygon points="55,174 65,174 60,182" fill="url(#unifiedGrad)"/>
 </g>
 
-<!-- 2. DISTINCT RNA SINGLE STRAND WITH COMB BASES -->
-<g>
-<!-- Flowing Single Backbone -->
-<path class="rna-backbone" d="M 60 210 Q 80 230, 60 250 T 60 290" stroke="url(#unifiedGrad)" stroke-width="4" stroke-linecap="round"/>
-
-<!-- Distinct Unpaired Exposed Bases -->
-<line x1="68" y1="220" x2="88" y2="215" stroke="url(#unifiedGrad)" stroke-width="3.5" stroke-linecap="round"/>
-<line x1="70" y1="240" x2="90" y2="245" stroke="url(#unifiedGrad)" stroke-width="3.5" stroke-linecap="round"/>
-<line x1="50" y1="260" x2="70" y2="265" stroke="url(#unifiedGrad)" stroke-width="3.5" stroke-linecap="round"/>
-<line x1="65" y1="280" x2="85" y2="275" stroke="url(#unifiedGrad)" stroke-width="3.5" stroke-linecap="round"/>
+<!-- 2. DISTINCT RNA SINGLE STRAND WITH SOLID BACKBONE -->
+<g class="rna-strand">
+<!-- Solid Wavy Single Backbone -->
+<path d="M 50 195 C 75 220, 45 260, 70 285" stroke="url(#unifiedGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+<!-- Connected Horizontal Bases -->
+<line x1="59" y1="205" x2="74" y2="205" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
+<line x1="64" y1="220" x2="79" y2="220" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
+<line x1="55" y1="240" x2="70" y2="240" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
+<line x1="50" y1="260" x2="65" y2="260" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
+<line x1="62" y1="275" x2="77" y2="275" stroke="url(#unifiedGrad)" stroke-width="3" stroke-linecap="round"/>
 </g>
 
 <!-- TRANSLATION ARROW -->
