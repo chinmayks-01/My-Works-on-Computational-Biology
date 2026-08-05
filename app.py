@@ -25,27 +25,27 @@ AA_NAMES = {
 }
 
 def inject_custom_ui_theme():
-    """Injects dynamic background animation and modern glassmorphism UI into Streamlit."""
+    """Injects dynamic background breathing animation and glassmorphism UI into Streamlit."""
     css = """
     <style>
-    /* Continuous Gradient Animation (Breathing Effect) */
+    /* Breathing Gradient Keyframe Animation */
     @keyframes breathingGradient {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
     }
 
-    /* Apply animated background to the entire Streamlit app container */
+    /* Apply breathing background to the main app container */
     .stApp {
-        background: linear-gradient(-45deg, #0f172a, #1e1b4b, #0f2b46, #090d16);
+        background: linear-gradient(-45deg, #090d16, #111827, #1e1b4b, #0f2b46, #090d16);
         background-size: 400% 400%;
-        animation: breathingGradient 16s ease infinite;
+        animation: breathingGradient 18s ease infinite;
         color: #f8fafc;
     }
 
     /* Glassmorphism containers for cards, metrics, and expanders */
     div[data-testid="stExpander"], div[data-testid="stMetric"] {
-        background: rgba(255, 255, 255, 0.04) !important;
+        background: rgba(255, 255, 255, 0.03) !important;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -53,30 +53,33 @@ def inject_custom_ui_theme():
         padding: 10px !important;
     }
 
-    /* Styled headings */
+    /* Headers and Text Styling */
     h1, h2, h3 {
         color: #f1f5f9 !important;
         font-weight: 700 !important;
+        letter-spacing: -0.02em;
     }
 
-    /* Modern Primary Buttons */
+    /* Primary Interactive Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #4f46e5 0%, #3b82f6 100%) !important;
+        background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%) !important;
         color: #ffffff !important;
         border: none !important;
         border-radius: 8px !important;
+        padding: 0.6rem 1.5rem !important;
+        font-weight: 600 !important;
         transition: all 0.3s ease !important;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
     }
 
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(59, 130, 246, 0.5);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
     }
 
-    /* Sidebar glassmorphism styling */
+    /* Glassmorphism Sidebar */
     section[data-testid="stSidebar"] {
-        background-color: rgba(15, 23, 42, 0.8) !important;
+        background-color: rgba(15, 23, 42, 0.75) !important;
         backdrop-filter: blur(16px);
         border-right: 1px solid rgba(255, 255, 255, 0.08);
     }
