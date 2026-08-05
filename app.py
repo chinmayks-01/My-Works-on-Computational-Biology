@@ -124,45 +124,52 @@ def identify_sequence(seq: str):
 
             # Step 3: Fetch and Parse Results
             if job_ready:
+                # Give NCBI a short moment to finalize generating the JSON object
                 time.sleep(2)
+                
                 results_res = requests.get(
                     base_url, 
                     params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "JSON2"}, 
                     headers=headers,
                     timeout=15
                 )
+                
+                # Check if JSON2 response is empty or blank
                 if not results_res.text.strip():
+                    # Fallback to XML parsing if JSON2 payload is empty
                     xml_res = requests.get(
-                        base_url,
-                        params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "XML"},
+                        base_url, 
+                        params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "XML"}, 
                         headers=headers,
                         timeout=15
                     )
                     if "<Hit_def>" in xml_res.text:
                         gene_name = xml_res.text.split("<Hit_def>")[1].split("</Hit_def>")[0]
-                        else:
-                            gene_name = "No significant BLAST hits found"
-                else:
-                    try:
-                    data = results_res.json()
-                    
-                    # Correct JSON2 schema traversal: BlastOutput2 is a LIST
-                    search_data = (
-                        data[0]
-                        .get("BlastOutput2", {})
-                        .get("report", {})
-                        .get("results", {})
-                        .get("search", {})
-                    )
-                    hits = search_data.get("hits", [])
-                    
-                    if hits:
-                        gene_name = hits[0]["description"][0].get("title", "Unknown Gene")
                     else:
                         gene_name = "No significant BLAST hits found"
+                else:
+                    try:
+                        data = results_res.json()
+                        
+                        # Handle both single dict and list response structures safely
+                        if isinstance(data, list) and len(data) > 0:
+                            data = data[0]
+                            
+                        hits = (
+                            data.get("BlastOutput2", {})
+                            .get("report", {})
+                            .get("results", {})
+                            .get("search", {})
+                            .get("hits", [])
+                        )
+                        
+                        if hits:
+                            gene_name = hits[0]["description"][0].get("title", "Unknown Gene")
+                        else:
+                            gene_name = "No significant BLAST hits found"
 
-                except (ValueError, KeyError, IndexError, TypeError) as parse_err:
-                    gene_name = f"Unknown Gene (Parse Error: {parse_err})"
+                    except Exception as json_err:
+                        gene_name = f"Unknown Gene (Parse Error: {json_err})"
             else:
                 gene_name = "Unknown Gene (BLAST Timed Out)"
         else:
