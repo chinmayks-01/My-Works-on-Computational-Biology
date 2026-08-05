@@ -904,7 +904,7 @@ if st.button("Run Pipeline", type="primary"):
             else:
                 st.info(f"Sequence length (**{len(protein_seq)} aa**) exceeds ESMFold's 400 aa limit. Automatically shifting to **ColabFold / AlphaFold2**...")
                 with st.spinner("Generating MSAs and predicting structure using ColabFold (1–3 mins)..."):
-                    COLABFOLD_API = "https://your-backend-endpoint.ngrok-free.app"
+                    COLABFOLD_API = "https://banshee-remedy-oblong.ngrok-free.dev/"
                     pdb_data = predict_structure_colabfold(protein_seq, api_url=COLABFOLD_API)
                     if pdb_data:
                         used_engine = "ColabFold/AlphaFold2"
