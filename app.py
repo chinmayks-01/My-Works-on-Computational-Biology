@@ -25,17 +25,16 @@ AA_NAMES = {
 }
 
 def inject_custom_ui_theme():
-    """Injects dynamic background breathing animation and glassmorphism UI into Streamlit."""
+    """Injects dynamic background breathing animation, glassmorphism UI, and a blurry diagonal light sweep."""
     css = """
     <style>
-    /* Breathing Gradient Keyframe Animation */
+    /* 1. Base Breathing Gradient */
     @keyframes breathingGradient {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
     }
 
-    /* Apply breathing background to the main app container */
     .stApp {
         background: linear-gradient(-45deg, #090d16, #111827, #1e1b4b, #0f2b46, #090d16);
         background-size: 400% 400%;
@@ -43,7 +42,40 @@ def inject_custom_ui_theme():
         color: #f8fafc;
     }
 
-    /* Glassmorphism containers for cards, metrics, and expanders */
+    /* 2. Blurry Diagonal Light Streak (The Aesthetic Sweep) */
+    @keyframes lightSweep {
+        0% { background-position: 0% 0%; opacity: 0.2; transform: scale(1); }
+        50% { opacity: 0.7; transform: scale(1.05); }
+        100% { background-position: 100% 100%; opacity: 0.2; transform: scale(1); }
+    }
+
+    .stApp::after {
+        content: "";
+        position: fixed; /* Keeps the light in the viewport as you scroll */
+        top: 0; left: 0; right: 0; bottom: 0;
+        /* Diagonal gradient creating the light band */
+        background: linear-gradient(
+            115deg, 
+            transparent 20%, 
+            rgba(99, 102, 241, 0.08) 40%, /* Indigo glow */
+            rgba(56, 189, 248, 0.15) 50%, /* Bright blue center */
+            rgba(168, 85, 247, 0.08) 60%, /* Purple glow */
+            transparent 80%
+        );
+        background-size: 200% 200%;
+        filter: blur(70px); /* Makes it a soft, aesthetic haze */
+        pointer-events: none; /* ESSENTIAL: Lets you click through the light layer */
+        z-index: 0;
+        animation: lightSweep 12s ease-in-out infinite alternate;
+    }
+
+    /* Elevate the main content above the light sweep */
+    .block-container {
+        position: relative;
+        z-index: 1;
+    }
+
+    /* 3. Glassmorphism containers for cards, metrics, and expanders */
     div[data-testid="stExpander"], div[data-testid="stMetric"] {
         background: rgba(255, 255, 255, 0.03) !important;
         backdrop-filter: blur(12px);
@@ -51,6 +83,8 @@ def inject_custom_ui_theme():
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
         border-radius: 12px !important;
         padding: 10px !important;
+        position: relative;
+        z-index: 2;
     }
 
     /* Headers and Text Styling */
@@ -70,6 +104,8 @@ def inject_custom_ui_theme():
         font-weight: 600 !important;
         transition: all 0.3s ease !important;
         box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        position: relative;
+        z-index: 2;
     }
 
     .stButton > button:hover {
@@ -82,6 +118,12 @@ def inject_custom_ui_theme():
         background-color: rgba(15, 23, 42, 0.75) !important;
         backdrop-filter: blur(16px);
         border-right: 1px solid rgba(255, 255, 255, 0.08);
+        z-index: 10;
+    }
+    
+    /* Make the header transparent so it blends with the dark theme */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
     }
     </style>
     """
