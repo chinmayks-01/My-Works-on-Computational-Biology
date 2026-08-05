@@ -166,6 +166,18 @@ def inject_custom_ui_theme():
     """
     st.markdown(css, unsafe_allow_html=True)
 
+def auto_scroll():
+    """Injects a tiny Javascript snippet to smoothly scroll the page down during execution."""
+    scroll_js = """
+    <script>
+        const main = window.parent.document.querySelector('.main');
+        if (main) {
+            main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' });
+        }
+    </script>
+    """
+    components.html(scroll_js, height=0, width=0)
+
 def render_protein_3d_viewer(
     pdb_input: str, is_pdb_id: bool = True, height: int = 480
 ):
@@ -793,6 +805,7 @@ if st.button("Run Pipeline", type="primary"):
         )
     else:
         st.success("Sequence successfully loaded!")
+        auto_scroll()
 
         st.header("Identification & BLAST Analysis")
         with st.spinner("Analyzing sequence type and querying BLAST..."):
@@ -813,6 +826,8 @@ if st.button("Run Pipeline", type="primary"):
                 st.dataframe(df_matches, use_container_width=True)
             else:
                 st.info("No significant BLAST hits found.")
+                
+            auto_scroll()
 
             st.header("Transcription & Translation")
             transcript, protein_seq = central_dogma_pipeline(
@@ -833,6 +848,8 @@ if st.button("Run Pipeline", type="primary"):
                 st.caption(
                     "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
                 )
+                
+            auto_scroll()
 
             st.header("Protein Analysis")
             col_a, col_b = st.columns(2)
@@ -856,6 +873,7 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
+            auto_scroll()
             
             st.header("Protein Structure Visualization")
 
@@ -883,9 +901,9 @@ if st.button("Run Pipeline", type="primary"):
                 with st.spinner(
                     "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
                 ):
-                    
+                    # Replace URL below with your active ngrok/Modal endpoint
                     COLABFOLD_API = (
-                        "https://banshee-remedy-oblong.ngrok-free.dev"
+                        "https://your-backend-endpoint.ngrok-free.app"
                     )
                     pdb_data = predict_structure_colabfold(
                         protein_seq, api_url=COLABFOLD_API
@@ -893,6 +911,7 @@ if st.button("Run Pipeline", type="primary"):
 
             if pdb_data:
                 st.success("3D Structure predicted successfully!")
+                auto_scroll()
 
                 st.subheader("Interactive 3D Structure Viewer")
                 render_protein_3d_viewer(
