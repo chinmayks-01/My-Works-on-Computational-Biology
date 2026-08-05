@@ -14,7 +14,7 @@ import py3Dmol
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
-
+from stmol import showmol
 
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
@@ -366,7 +366,6 @@ def find_orfs(dna_seq: str, min_protein_length: int = 30):
         target_str = str(target_seq)
         total_len = len(target_str)
         for frame in range(3):
-            # Pass Seq object directly instead of slicing a string to avoid AttributeError
             translated = target_seq[frame:].translate(to_stop=False)
             translated_str = str(translated)
             i = 0
@@ -379,7 +378,6 @@ def find_orfs(dna_seq: str, min_protein_length: int = 30):
                     protein_len = len(translated_str) - start_idx
                     if protein_len >= min_protein_length:
                         start_nt = (start_idx * 3) + frame + 1
-                        end_nt = total_len if strand == "+" else total_len
                         orfs.append(
                             {
                                 "Strand": strand,
@@ -418,7 +416,14 @@ def find_orfs(dna_seq: str, min_protein_length: int = 30):
 
 def render_orf_diagram(orfs, total_seq_len):
     """Renders a clean graphical map of all 6 reading frames and detected ORFs."""
-    frames = ["Frame +1", "Frame +2", "Frame +3", "Frame -1", "Frame -2", "Frame -3"]
+    frames = [
+        "Frame +1",
+        "Frame +2",
+        "Frame +3",
+        "Frame -1",
+        "Frame -2",
+        "Frame -3",
+    ]
     frame_colors = {
         "Frame +1": "#38bdf8",
         "Frame +2": "#818cf8",
@@ -444,7 +449,6 @@ def render_orf_diagram(orfs, total_seq_len):
             <div style="position: relative; flex-grow: 1; height: 16px; background: rgba(255,255,255,0.04); border-radius: 4px; border: 1px solid rgba(255,255,255,0.06);">
         """
 
-        # Draw matching ORFs onto this frame track
         frame_orfs = [o for o in orfs if o["Frame"] == f]
         for orf in frame_orfs:
             left_pct = max(0, min(100, (orf["Start (nt)"] / total_seq_len) * 100))
@@ -574,6 +578,128 @@ def color_protein_sequence_block(seq: str) -> str:
 
 inject_custom_ui_theme()
 
+# --- RESTORED HEADER BANNER & ANIMATION ---
+st.markdown(
+    """<style>
+.header-container {
+display: flex;
+flex-direction: row;
+justify-content: space-between;
+align-items: flex-start;
+width: 100%;
+margin-bottom: 1.5rem;
+position: relative;
+}
+@keyframes titleTextGlow {
+0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
+100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+}
+.title-glow-text {
+background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+animation: titleTextGlow 4s ease-in-out infinite;
+display: inline-block;
+}
+
+.central-dogma-anim-vertical {
+position: absolute;
+top: -10px;
+right: 15px;
+width: 100px;  
+height: 320px; 
+overflow: visible;
+z-index: 100;
+}
+
+@keyframes spinDna {
+0% { transform: scaleX(1); }
+50% { transform: scaleX(-0.85); filter: drop-shadow(0 0 10px #38bdf8); }
+100% { transform: scaleX(1); }
+}
+.dna-layer {
+transform-origin: 60px 80px;
+animation: spinDna 5s linear infinite;
+}
+
+@keyframes swayRna {
+0%, 100% { transform: translateX(0px); }
+50% { transform: translateX(3px); }
+}
+.rna-strand {
+animation: swayRna 3s ease-in-out infinite;
+}
+
+@keyframes pulseProtein {
+0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.5)); }
+50% { transform: scale(1.08) rotate(3deg); filter: drop-shadow(0 0 15px rgba(192, 132, 252, 1)); }
+}
+.protein-cluster {
+transform-origin: 60px 345px;
+animation: pulseProtein 3.5s ease-in-out infinite;
+}
+
+@keyframes processArrow {
+0%, 100% { opacity: 0.3; }
+50% { opacity: 1; filter: drop-shadow(0 0 6px white); }
+}
+.process-arrow {
+animation: processArrow 2s infinite;
+}
+</style>
+<div class="header-container">
+<div style="flex: 1; min-width: 320px;">
+<h1 style='font-size: 2.8rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
+Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
+</h1>
+</div>
+<div style="flex-shrink: 0; text-align: right;">
+<svg class="central-dogma-anim-vertical" viewBox="0 0 120 400" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="unifiedGrad" x1="0" y1="0" x2="0" y2="400" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#38bdf8"/>
+<stop offset="50%" stop-color="#818cf8"/>
+<stop offset="100%" stop-color="#c084fc"/>
+</linearGradient>
+</defs>
+<g class="dna-layer">
+<path d="M 40 30 C 40 55, 80 65, 80 90 C 80 115, 40 125, 40 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M 80 30 C 80 55, 40 65, 40 90 C 40 115, 80 125, 80 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
+<line x1="42" y1="30" x2="78" y2="30" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="50" y1="45" x2="70" y2="45" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="65" y1="75" x2="55" y2="75" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="78" y1="90" x2="42" y2="90" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="65" y1="105" x2="55" y2="105" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="50" y1="135" x2="70" y2="135" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="42" y1="150" x2="78" y2="150" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+</g>
+<g class="process-arrow">
+<line x1="60" y1="158" x2="60" y2="178" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
+<polygon points="55,174 65,174 60,182" fill="url(#unifiedGrad)"/>
+</g>
+<g class="rna-strand">
+<path d="M 50 195 C 75 220, 45 260, 70 285" stroke="url(#unifiedGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+</g>
+<g class="process-arrow">
+<line x1="60" y1="298" x2="60" y2="318" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
+<polygon points="55,314 65,314 60,322" fill="url(#unifiedGrad)"/>
+</g>
+<g class="protein-cluster">
+<path d="M 40 345 L 60 335 L 80 345 L 70 365 L 50 365 Z" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" stroke-linejoin="round"/>
+<path d="M 60 335 L 50 365" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" opacity="0.6"/>
+<circle cx="40" cy="345" r="9" fill="url(#unifiedGrad)"/>
+<circle cx="60" cy="335" r="9" fill="url(#unifiedGrad)"/>
+<circle cx="80" cy="345" r="9" fill="url(#unifiedGrad)"/>
+<circle cx="70" cy="365" r="9" fill="url(#unifiedGrad)"/>
+<circle cx="50" cy="365" r="9" fill="url(#unifiedGrad)"/>
+</g>
+</svg>
+</div>
+</div>""",
+    unsafe_allow_html=True,
+)
+
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
     "NCBI Entrez Email", value="your.email@example.com"
@@ -629,7 +755,6 @@ if st.button("Run Pipeline", type="primary"):
                 with st.expander("View mRNA Transcript"):
                     st.text_area("RNA Sequence", transcript, height=100)
 
-            # --- ORF DIAGRAMMATIC VIEWER INTEGRATION ---
             st.header("Open Reading Frame (ORF) Viewer & Diagram Map")
             if seq_type in ["DNA", "RNA"]:
                 dna_for_orf = sequence.replace("U", "T")
@@ -647,7 +772,6 @@ if st.button("Run Pipeline", type="primary"):
                     )
 
                 if orf_list:
-                    # Render graphical map
                     render_orf_diagram(orf_list, len(dna_for_orf))
 
                     df_orfs = pd.DataFrame(orf_list)
