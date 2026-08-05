@@ -16,7 +16,6 @@ from textwrap import dedent
 
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
-
 AA_NAMES = {
     'A': 'Alanine', 'C': 'Cysteine', 'D': 'Aspartic Acid', 'E': 'Glutamic Acid',
     'F': 'Phenylalanine', 'G': 'Glycine', 'H': 'Histidine', 'I': 'Isoleucine',
@@ -29,7 +28,6 @@ def inject_custom_ui_theme():
     """Injects dynamic breathing background, glassmorphism UI, and equal-sized side-by-side radio cards."""
     css = """
     <style>
-    /* 1. Base Deep Black Background */
     @keyframes breathingGradient {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
@@ -43,7 +41,6 @@ def inject_custom_ui_theme():
         color: #f8fafc;
     }
 
-    /* 2. Dynamic Blurry Light Zone */
     @keyframes lightSweep {
         0% { opacity: 0.2; transform: scale(1); }
         50% { opacity: 0.6; transform: scale(1.15); }
@@ -69,13 +66,11 @@ def inject_custom_ui_theme():
         animation: lightSweep 14s ease-in-out infinite alternate;
     }
 
-    /* Elevate content above background light layer */
     .block-container {
         position: relative;
         z-index: 1;
     }
 
-    /* 3. Glassmorphism Containers */
     div[data-testid="stExpander"], div[data-testid="stMetric"] {
         background: rgba(255, 255, 255, 0.02) !important;
         backdrop-filter: blur(12px);
@@ -87,14 +82,12 @@ def inject_custom_ui_theme():
         z-index: 2;
     }
 
-    /* Headers & Text */
     h1, h2, h3 {
         color: #f1f5f9 !important;
         font-weight: 700 !important;
         letter-spacing: -0.02em;
     }
 
-    /* Primary Interactive Buttons */
     .stButton > button {
         background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
         color: #ffffff !important;
@@ -113,7 +106,6 @@ def inject_custom_ui_theme():
         box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
     }
 
-    /* Sidebar Styling */
     section[data-testid="stSidebar"] {
         background-color: rgba(10, 10, 12, 0.85) !important;
         backdrop-filter: blur(16px);
@@ -125,7 +117,6 @@ def inject_custom_ui_theme():
         background: transparent !important;
     }
 
-    /* 4. Side-by-Side Selectable Glass Cards (Equal Dimensions) */
     div[data-testid="stRadio"] div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
@@ -149,14 +140,12 @@ def inject_custom_ui_theme():
         justify-content: flex-start !important;
     }
 
-    /* Card Hover State */
     div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
         background: rgba(56, 189, 248, 0.08) !important;
         border-color: rgba(56, 189, 248, 0.4) !important;
         transform: translateY(-1px);
     }
 
-    /* Active Selected Card Highlight */
     div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
         background: rgba(56, 189, 248, 0.12) !important;
         border-color: #38bdf8 !important;
@@ -166,18 +155,11 @@ def inject_custom_ui_theme():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-def render_protein_3d_viewer(
-    pdb_input: str, is_pdb_id: bool = True, height: int = 480
-):
-    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js."""
+def render_protein_3d_viewer(pdb_input: str, is_pdb_id: bool = True, height: int = 480):
     if is_pdb_id:
         fetch_js = f"v.addModelAsPdbId('{pdb_input.strip()}');"
     else:
-        escaped_pdb = (
-            pdb_input.replace("\\", "\\\\")
-            .replace("`", "\\`")
-            .replace("${", "\\${")
-        )
+        escaped_pdb = pdb_input.replace("\\", "\\\\").replace("`", "\\`").replace("${", "\\${")
         fetch_js = f"v.addModel(`{escaped_pdb}`, 'pdb');"
 
     html_code = f"""
@@ -187,93 +169,20 @@ def render_protein_3d_viewer(
         <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
         <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
         <style>
-            * {{
-                box-sizing: border-box;
-                margin: 0;
-                padding: 0;
-            }}
-            body, html {{
-                width: 100%;
-                height: 100%;
-                overflow: hidden;
-                background-color: transparent;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            }}
-            
-            .viewer-wrapper {{
-                position: relative;
-                width: 100%;
-                height: {height}px;
-                background: rgba(10, 10, 12, 0.6);
-                backdrop-filter: blur(12px);
-                border: 1px solid rgba(255, 255, 255, 0.1);
-                border-radius: 14px;
-                overflow: hidden;
-            }}
-
-            #viewport {{
-                width: 100%;
-                height: 100%;
-                touch-action: none;
-            }}
-
-            .controls-bar {{
-                position: absolute;
-                bottom: 12px;
-                left: 50%;
-                transform: translateX(-50%);
-                display: flex;
-                gap: 6px;
-                background: rgba(0, 0, 0, 0.75);
-                backdrop-filter: blur(8px);
-                padding: 6px 12px;
-                border-radius: 30px;
-                border: 1px solid rgba(255, 255, 255, 0.15);
-                z-index: 10;
-                width: max-content;
-                max-width: 92%;
-                overflow-x: auto;
-            }}
-
-            .control-btn {{
-                background: rgba(255, 255, 255, 0.08);
-                color: #e2e8f0;
-                border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 20px;
-                padding: 6px 12px;
-                font-size: 11px;
-                font-weight: 600;
-                cursor: pointer;
-                white-space: nowrap;
-                transition: all 0.2s ease;
-                -webkit-tap-highlight-color: transparent;
-            }}
-
-            .control-btn:active, .control-btn.active {{
-                background: rgba(56, 189, 248, 0.25);
-                border-color: #38bdf8;
-                color: #38bdf8;
-            }}
-
-            .gesture-hint {{
-                position: absolute;
-                top: 10px;
-                right: 12px;
-                background: rgba(0, 0, 0, 0.5);
-                color: rgba(255, 255, 255, 0.5);
-                font-size: 10px;
-                padding: 4px 8px;
-                border-radius: 6px;
-                pointer-events: none;
-                backdrop-filter: blur(4px);
-            }}
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }}
+            .viewer-wrapper {{ position: relative; width: 100%; height: {height}px; background: rgba(10, 10, 12, 0.6); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; overflow: hidden; }}
+            #viewport {{ width: 100%; height: 100%; touch-action: none; }}
+            .controls-bar {{ position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); display: flex; gap: 6px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px); padding: 6px 12px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 10; width: max-content; max-width: 92%; overflow-x: auto; }}
+            .control-btn {{ background: rgba(255, 255, 255, 0.08); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 20px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.2s ease; -webkit-tap-highlight-color: transparent; }}
+            .control-btn:active, .control-btn.active {{ background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; color: #38bdf8; }}
+            .gesture-hint {{ position: absolute; top: 10px; right: 12px; background: rgba(0, 0, 0, 0.5); color: rgba(255, 255, 255, 0.5); font-size: 10px; padding: 4px 8px; border-radius: 6px; pointer-events: none; backdrop-filter: blur(4px); }}
         </style>
     </head>
     <body>
         <div class="viewer-wrapper">
             <div class="gesture-hint">👆 1-Finger Rotate | 🤏 Pinch Zoom</div>
             <div id="viewport"></div>
-            
             <div class="controls-bar">
                 <button class="control-btn active" onclick="setStyle('cartoon')">Cartoon</button>
                 <button class="control-btn" onclick="setStyle('stick')">Sticks</button>
@@ -282,74 +191,42 @@ def render_protein_3d_viewer(
                 <button class="control-btn" onclick="resetView()">Reset</button>
             </div>
         </div>
-
         <script>
             let viewer = null;
             let currentModel = null;
             let surfaceObj = null;
             let currentStyle = 'cartoon';
-
             document.addEventListener("DOMContentLoaded", function() {{
                 let element = document.getElementById('viewport');
                 let config = {{ backgroundColor: '0x000000', backgroundAlpha: 0.0 }};
-                
                 viewer = $3Dmol.createViewer(element, config);
                 let v = viewer;
-
                 {fetch_js}
-                
                 currentModel = v.getModel();
                 setStyle('cartoon');
                 v.zoomTo();
                 v.render();
             }});
-
             function setStyle(type) {{
                 if (!viewer) return;
                 currentStyle = type;
-                
                 document.querySelectorAll('.control-btn').forEach(btn => {{
-                    if(['Cartoon', 'Sticks', 'Sphere'].includes(btn.innerText)) {{
-                        btn.classList.remove('active');
-                    }}
+                    if(['Cartoon', 'Sticks', 'Sphere'].includes(btn.innerText)) {{ btn.classList.remove('active'); }}
                 }});
-
                 viewer.setStyle({{}}, {{}});
-
-                if (type === 'cartoon') {{
-                    viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
-                }} else if (type === 'stick') {{
-                    viewer.setStyle({{}}, {{stick: {{colorscheme: 'amino'}}}});
-                }} else if (type === 'sphere') {{
-                    viewer.setStyle({{}}, {{sphere: {{scale: 0.28, colorscheme: 'spectrum'}}}});
-                }}
-
+                if (type === 'cartoon') {{ viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}}); }}
+                else if (type === 'stick') {{ viewer.setStyle({{}}, {{stick: {{colorscheme: 'amino'}}}}); }}
+                else if (type === 'sphere') {{ viewer.setStyle({{}}, {{sphere: {{scale: 0.28, colorscheme: 'spectrum'}}}}); }}
                 viewer.render();
             }}
-
             function toggleSurface() {{
                 if (!viewer) return;
                 let btn = event.target;
-                
-                if (surfaceObj) {{
-                    viewer.removeSurface(surfaceObj);
-                    surfaceObj = null;
-                    btn.classList.remove('active');
-                }} else {{
-                    btn.classList.add('active');
-                    surfaceObj = viewer.addSurface($3Dmol.SurfaceType.MS, {{
-                        opacity: 0.6,
-                        color: 'white'
-                    }});
-                }}
+                if (surfaceObj) {{ viewer.removeSurface(surfaceObj); surfaceObj = null; btn.classList.remove('active'); }}
+                else {{ btn.classList.add('active'); surfaceObj = viewer.addSurface($3Dmol.SurfaceType.MS, {{ opacity: 0.6, color: 'white' }}); }}
                 viewer.render();
             }}
-
-            function resetView() {{
-                if (!viewer) return;
-                viewer.zoomTo();
-                viewer.render();
-            }}
+            function resetView() {{ if (!viewer) return; viewer.zoomTo(); viewer.render(); }}
         </script>
     </body>
     </html>
@@ -381,7 +258,6 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
     
     return input_query.replace(" ", "").replace("\n", "").upper()
 
-
 def identify_sequence(seq: str):
     seq = seq.strip().upper()
     seq_set = set(seq)
@@ -400,31 +276,21 @@ def identify_sequence(seq: str):
         return None, None, []
 
     gc_content = gc_fraction(seq) * 100 if seq_type in ["DNA", "RNA"] else None
-
     program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
     database = "nt" if seq_type in ["DNA", "RNA"] else "nr"
-    
     gene_matches = []
     
     try:
-        result_handle = NCBIWWW.qblast(
-            program=program, 
-            database=database, 
-            sequence=seq,
-            hitlist_size=5  
-        )
+        result_handle = NCBIWWW.qblast(program=program, database=database, sequence=seq, hitlist_size=5)
         blast_xml = result_handle.read()
         result_handle.close()
-
         root = ET.fromstring(blast_xml)
         
         for hit in root.findall(".//Hit")[:5]:
             accession_elem = hit.find("Hit_accession")
             accession_id = accession_elem.text if accession_elem is not None else "N/A"
-            
             title_elem = hit.find("Hit_def")
             title = title_elem.text if title_elem is not None else "Unknown Gene"
-            
             hsp = hit.find(".//Hsp")
             hit_gc = None
             pct_match = 0.0
@@ -449,17 +315,14 @@ def identify_sequence(seq: str):
                 "GC Content (%)": f"{hit_gc:.2f}" if hit_gc is not None else "N/A",
                 "Match Percentage (%)": f"{pct_match:.2f}"
             })
-            
     except Exception as e:
         st.warning(f"NCBI BLAST query encounter: {e}")
 
     return seq_type, gc_content, gene_matches
 
-
 def central_dogma_pipeline(seq: str, seq_type: str):
     bio_seq = Seq(seq)
     transcript = None
-    
     if seq_type == "DNA":
         transcript = str(bio_seq.transcribe())
         protein = str(bio_seq.transcribe().translate(to_stop=True))
@@ -468,9 +331,7 @@ def central_dogma_pipeline(seq: str, seq_type: str):
         protein = str(bio_seq.translate(to_stop=True))
     else:
         protein = seq
-
     return transcript, protein
-
 
 def fetch_pdb_similar(protein_seq: str):
     url = "https://search.rcsb.org/rcsbsearch/v2/query"
@@ -482,7 +343,6 @@ def fetch_pdb_similar(protein_seq: str):
         "return_type": "polymer_entity",
         "request_options": {"paginate": {"start": 0, "rows": 5}, "scoring_strategy": "sequence"}
     }
-    
     response = requests.post(url, json=query)
     pdb_matches = []
     if response.status_code == 200:
@@ -493,13 +353,11 @@ def fetch_pdb_similar(protein_seq: str):
             pdb_matches.append({"PDB ID": pdb_id, "Sequence Identity (%)": f"{match_pct:.2f}"})
     return pdb_matches
 
-
 def analyze_amino_acids(protein_seq: str):
     total_aa = len(protein_seq)
     counts = Counter(protein_seq)
     valid_counts = {aa: count for aa, count in counts.items() if aa in AA_NAMES}
     top_10 = Counter(valid_counts).most_common(10)
-    
     data = []
     for aa, count in top_10:
         pct = (count / total_aa) * 100
@@ -511,22 +369,11 @@ def analyze_amino_acids(protein_seq: str):
         })
     return pd.DataFrame(data)
 
-
 def predict_structure_omegafold(protein_seq: str, api_key: str = ""):
-    """Sends sequence to Neurosnap's hosted OmegaFold API endpoint."""
     try:
         url = "https://api.neurosnap.ai/v1/jobs"
-        headers = {
-            "X-API-KEY": api_key,
-            "Accept": "application/json"
-        }
-        payload = {
-            "services": ["OmegaFold"],
-            "inputs": {
-                "sequence": protein_seq.strip()
-            }
-        }
-        
+        headers = {"X-API-KEY": api_key, "Accept": "application/json"}
+        payload = {"services": ["OmegaFold"], "inputs": {"sequence": protein_seq.strip()}}
         response = requests.post(url, json=payload, headers=headers, timeout=300)
         if response.status_code == 200:
             job_data = response.json()
@@ -538,16 +385,10 @@ def predict_structure_omegafold(protein_seq: str, api_key: str = ""):
         st.error(f"Failed to connect to OmegaFold service: {str(e)}")
         return None
 
-
-def predict_structure_colabfold(
-    sequence: str, api_url: str = "YOUR_COLABFOLD_API_ENDPOINT"
-):
+def predict_structure_colabfold(sequence: str, api_url: str = "YOUR_COLABFOLD_API_ENDPOINT"):
     try:
         payload = {"sequence": sequence.strip()}
-        response = requests.post(
-            f"{api_url}/predict", json=payload, timeout=300
-        )
-
+        response = requests.post(f"{api_url}/predict", json=payload, timeout=300)
         if response.status_code == 200:
             res_json = response.json()
             return res_json.get("pdb_data")
@@ -570,91 +411,30 @@ def color_protein_sequence_block(seq: str) -> str:
         'H': '#15a4a4', 'Y': '#15a4a4',
         'S': '#15a400', 'T': '#15a400'
     }
-
     styled_html = "<div style='font-family: monospace; font-size: 15px; word-break: break-all; line-height: 2.0; background-color: #222; padding: 14px; border-radius: 6px; letter-spacing: 1px;'>"
-    
     for aa in seq:
         bg = bg_colors.get(aa, "#ffffff")
         text_color = "#ffffff" if aa in ['R', 'K', 'S', 'T', 'D', 'E'] else "#000000"
-        
-        styled_html += (
-            f"<span style='background-color: {bg}; color: {text_color}; "
-            f"font-weight: bold; padding: 2px 5px; margin: 1px 0px; "
-            f"display: inline-block; text-align: center; border-radius: 2px;'>{aa}</span>"
-        )
-        
+        styled_html += f"<span style='background-color: {bg}; color: {text_color}; font-weight: bold; padding: 2px 5px; margin: 1px 0px; display: inline-block; text-align: center; border-radius: 2px;'>{aa}</span>"
     styled_html += "</div>"
     return styled_html
 
+# Apply UI Theme immediately after config
 inject_custom_ui_theme()
 
 st.markdown("""<style>
-.header-container {
-display: flex;
-flex-direction: row;
-justify-content: space-between;
-align-items: flex-start;
-width: 100%;
-margin-bottom: 1.5rem;
-position: relative;
-}
-@keyframes titleTextGlow {
-0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
-50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
-100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
-}
-.title-glow-text {
-background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
--webkit-background-clip: text;
--webkit-text-fill-color: transparent;
-animation: titleTextGlow 4s ease-in-out infinite;
-display: inline-block;
-}
-
-.central-dogma-anim-vertical {
-position: absolute;
-top: -10px;
-right: 15px;
-width: 100px;  
-height: 320px; 
-overflow: visible;
-z-index: 100;
-}
-
-@keyframes spinDna {
-0% { transform: scaleX(1); }
-50% { transform: scaleX(-0.85); filter: drop-shadow(0 0 10px #38bdf8); }
-100% { transform: scaleX(1); }
-}
-.dna-layer {
-transform-origin: 60px 80px;
-animation: spinDna 5s linear infinite;
-}
-
-@keyframes swayRna {
-0%, 100% { transform: translateX(0px); }
-50% { transform: translateX(3px); }
-}
-.rna-strand {
-animation: swayRna 3s ease-in-out infinite;
-}
-
-@keyframes pulseProtein {
-0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.5)); }
-50% { transform: scale(1.08) rotate(3deg); filter: drop-shadow(0 0 15px rgba(192, 132, 252, 1)); }
-}
-.protein-cluster {
-transform-origin: 60px 345px;
-animation: pulseProtein 3.5s ease-in-out infinite;
-}
-
-@keyframes processArrow {
-0%, 100% { opacity: 0.3; }
-50% { opacity: 1; filter: drop-shadow(0 0 6px white); }
-}
-.process-arrow {
-animation: processArrow 2s infinite;
-}
+.header-container { display: flex; flex-direction: row; justify-content: space-between; align-items: flex-start; width: 100%; margin-bottom: 1.5rem; position: relative; }
+@keyframes titleTextGlow { 0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); } 50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); } 100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); } }
+.title-glow-text { background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; animation: titleTextGlow 4s ease-in-out infinite; display: inline-block; }
+.central-dogma-anim-vertical { position: absolute; top: -10px; right: 15px; width: 100px; height: 320px; overflow: visible; z-index: 100; }
+@keyframes spinDna { 0% { transform: scaleX(1); } 50% { transform: scaleX(-0.85); filter: drop-shadow(0 0 10px #38bdf8); } 100% { transform: scaleX(1); } }
+.dna-layer { transform-origin: 60px 80px; animation: spinDna 5s linear infinite; }
+@keyframes swayRna { 0%, 100% { transform: translateX(0px); } 50% { transform: translateX(3px); } }
+.rna-strand { animation: swayRna 3s ease-in-out infinite; }
+@keyframes pulseProtein { 0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.5)); } 50% { transform: scale(1.08) rotate(3deg); filter: drop-shadow(0 0 15px rgba(192, 132, 252, 1)); } }
+.protein-cluster { transform-origin: 60px 345px; animation: pulseProtein 3.5s ease-in-out infinite; }
+@keyframes processArrow { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; filter: drop-shadow(0 0 6px white); } }
+.process-arrow { animation: processArrow 2s infinite; }
 </style>
 <div class="header-container">
 <div style="flex: 1; min-width: 320px;">
@@ -671,11 +451,9 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 <stop offset="100%" stop-color="#c084fc"/>
 </linearGradient>
 </defs>
-
 <g class="dna-layer">
 <path d="M 40 30 C 40 55, 80 65, 80 90 C 80 115, 40 125, 40 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round"/>
 <path d="M 80 30 C 80 55, 40 65, 40 90 C 40 115, 80 125, 80 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
-
 <line x1="42" y1="30" x2="78" y2="30" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 <line x1="50" y1="45" x2="70" y2="45" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 <line x1="65" y1="75" x2="55" y2="75" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
@@ -684,25 +462,20 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 <line x1="50" y1="135" x2="70" y2="135" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 <line x1="42" y1="150" x2="78" y2="150" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 </g>
-
 <g class="process-arrow">
 <line x1="60" y1="158" x2="60" y2="178" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
 <polygon points="55,174 65,174 60,182" fill="url(#unifiedGrad)"/>
 </g>
-
 <g class="rna-strand">
 <path d="M 50 195 C 75 220, 45 260, 70 285" stroke="url(#unifiedGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
 </g>
-
 <g class="process-arrow">
 <line x1="60" y1="298" x2="60" y2="318" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
 <polygon points="55,314 65,314 60,322" fill="url(#unifiedGrad)"/>
 </g>
-
 <g class="protein-cluster">
 <path d="M 40 345 L 60 335 L 80 345 L 70 365 L 50 365 Z" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" stroke-linejoin="round"/>
 <path d="M 60 335 L 50 365" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" opacity="0.6"/>
-
 <circle cx="40" cy="345" r="9" fill="url(#unifiedGrad)"/>
 <circle cx="60" cy="335" r="9" fill="url(#unifiedGrad)"/>
 <circle cx="80" cy="345" r="9" fill="url(#unifiedGrad)"/>
@@ -714,21 +487,13 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 </div>""", unsafe_allow_html=True)
 
 st.sidebar.header("Settings")
-user_email = st.sidebar.text_input(
-    "NCBI Entrez Email", value="your.email@example.com"
-)
+user_email = st.sidebar.text_input("NCBI Entrez Email", value="your.email@example.com")
 Entrez.email = user_email
-
 omega_api_key = st.sidebar.text_input("OmegaFold API Key (Neurosnap)", type="password", value="")
-
 
 # --- SECTION 1: INPUT SEQUENCE ---
 st.header("Input Sequence")
-
-st.markdown(
-    "<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>",
-    unsafe_allow_html=True,
-)
+st.markdown("<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>", unsafe_allow_html=True)
 
 input_option = st.radio(
     "Choose Input Method:",
@@ -741,28 +506,18 @@ raw_input = ""
 uploaded_file = None
 
 if input_option == "Raw Sequence / Accession ID":
-    raw_input = st.text_area(
-        "Enter Sequence or Accession ID:",
-        value="",
-        placeholder="e.g., NM_000518 or ATGCG...",
-        height=140,
-    )
+    raw_input = st.text_area("Enter Sequence or Accession ID:", value="", placeholder="e.g., NM_000518 or ATGCG...", height=140)
 else:
-    uploaded_file = st.file_uploader(
-        "Upload FASTA file", type=["fasta", "fas", "fa"]
-    )
+    uploaded_file = st.file_uploader("Upload FASTA file", type=["fasta", "fas", "fa"])
 
 if st.button("Run Pipeline", type="primary"):
     with st.spinner("Processing input sequence..."):
         sequence = fetch_sequence(raw_input, uploaded_file)
 
     if not sequence:
-        st.error(
-            "No valid sequence input detected. Please provide a sequence, accession ID, or FASTA file."
-        )
+        st.error("No valid sequence input detected. Please provide a sequence, accession ID, or FASTA file.")
     else:
         st.success("Sequence successfully loaded!")
-
         st.header("Identification & BLAST Analysis")
         with st.spinner("Analyzing sequence type and querying BLAST..."):
             seq_type, gc_content, gene_matches = identify_sequence(sequence)
@@ -770,10 +525,7 @@ if st.button("Run Pipeline", type="primary"):
         if seq_type:
             col1, col2, col3 = st.columns(3)
             col1.metric("Sequence Type", seq_type)
-            col2.metric(
-                "GC Content",
-                f"{gc_content:.2f}%" if gc_content is not None else "N/A",
-            )
+            col2.metric("GC Content", f"{gc_content:.2f}%" if gc_content is not None else "N/A")
             col3.metric("Sequence Length", f"{len(sequence)} bp/aa")
 
             st.subheader("Top 5 Gene Matches (NCBI BLAST)")
@@ -784,24 +536,15 @@ if st.button("Run Pipeline", type="primary"):
                 st.info("No significant BLAST hits found.")
 
             st.header("Transcription & Translation")
-            transcript, protein_seq = central_dogma_pipeline(
-                sequence, seq_type
-            )
+            transcript, protein_seq = central_dogma_pipeline(sequence, seq_type)
 
             if transcript:
                 with st.expander("View mRNA Transcript"):
                     st.text_area("RNA Sequence", transcript, height=100)
 
-            with st.expander(
-                "View Translated Protein Sequence", expanded=True
-            ):
-                st.markdown(
-                    color_protein_sequence_block(protein_seq),
-                    unsafe_allow_html=True,
-                )
-                st.caption(
-                    "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
-                )
+            with st.expander("View Translated Protein Sequence", expanded=True):
+                st.markdown(color_protein_sequence_block(protein_seq), unsafe_allow_html=True)
+                st.caption("🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline")
 
             st.header("Protein Analysis")
             col_a, col_b = st.columns(2)
@@ -819,14 +562,11 @@ if st.button("Run Pipeline", type="primary"):
                 with st.spinner("Searching RCSB PDB..."):
                     matches = fetch_pdb_similar(protein_seq)
                 if matches:
-                    st.dataframe(
-                        pd.DataFrame(matches), use_container_width=True
-                    )
+                    st.dataframe(pd.DataFrame(matches), use_container_width=True)
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
             st.header("Protein Structure Visualization")
-
             engine = st.radio(
                 "Select Prediction Engine:",
                 options=[
@@ -846,22 +586,14 @@ if st.button("Run Pipeline", type="primary"):
                     with st.spinner("Predicting 3D structure using OmegaFold API..."):
                         pdb_data = predict_structure_omegafold(protein_seq, api_key=omega_api_key)
             else:
-                with st.spinner(
-                    "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
-                ):
+                with st.spinner("Generating MSAs and predicting structure using ColabFold (1–3 mins)..."):
                     COLABFOLD_API = "https://banshee-remedy-oblong.ngrok-free.dev/"
-                    pdb_data = predict_structure_colabfold(
-                        protein_seq, api_url=COLABFOLD_API
-                    )
+                    pdb_data = predict_structure_colabfold(protein_seq, api_url=COLABFOLD_API)
 
             if pdb_data:
                 st.success("3D Structure predicted successfully!")
-
                 st.subheader("Interactive 3D Structure Viewer")
-                render_protein_3d_viewer(
-                    pdb_input=pdb_data, is_pdb_id=False, height=500
-                )
-
+                render_protein_3d_viewer(pdb_input=pdb_data, is_pdb_id=False, height=500)
                 st.download_button(
                     label="Download PDB File",
                     data=pdb_data,
@@ -871,7 +603,4 @@ if st.button("Run Pipeline", type="primary"):
             elif "OmegaFold" in engine and omega_api_key:
                 st.error("Failed to predict 3D structure using OmegaFold API. Verify your API key and network connection.")
             elif "ColabFold" in engine:
-                st.error(
-                    "Failed to predict 3D structure using ColabFold API. Check backend connection."
-                )
-                )
+                st.error("Failed to predict 3D structure using ColabFold API. Check backend connection.")
