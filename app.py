@@ -906,4 +906,4 @@ if st.button("Run Pipeline", type="primary"):
             elif "ColabFold" in engine:
                 st.error(
                     "Failed to predict 3D structure using ColabFold API. Check backend connection."
-                )ld backend is connected.")
+                )
