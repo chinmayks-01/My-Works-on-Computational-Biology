@@ -166,7 +166,7 @@ def inject_custom_ui_theme():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-ddef auto_scroll():
+def auto_scroll():
     """Aggressive Javascript injection to force Streamlit to scroll down."""
     scroll_js = """
     <script>
