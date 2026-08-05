@@ -405,14 +405,34 @@ user_email = st.sidebar.text_input("NCBI Entrez Email", value="your.email@exampl
 Entrez.email = user_email
 
 
+# --- SECTION 1: INPUT SEQUENCE ---
 st.header("1. Input Sequence")
 
+# Side-by-side card radio buttons
 input_option = st.radio(
     "Choose Input Method:",
     options=["Raw Sequence / Accession ID", "Upload FASTA File"],
     horizontal=True,
     label_visibility="visible"
 )
+
+# Initialize variables to prevent NameError
+raw_input = ""
+uploaded_file = None
+
+# Render input UI dynamically based on the selected card
+if input_option == "Raw Sequence / Accession ID":
+    raw_input = st.text_area(
+        "Enter Sequence or Accession ID:",
+        value="",
+        placeholder="e.g., NM_000518 or ATGCG...",
+        height=140
+    )
+else:
+    uploaded_file = st.file_uploader(
+        "Upload FASTA file", 
+        type=["fasta", "fas", "fa"]
+    )
 if st.button("Run Pipeline", type="primary"):
     with st.spinner("Processing input sequence..."):
         sequence = fetch_sequence(raw_input, uploaded_file)
