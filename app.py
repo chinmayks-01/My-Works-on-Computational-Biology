@@ -602,133 +602,111 @@ st.set_page_config(
 )
 inject_custom_ui_theme()
 
-st.markdown(
-    """<style>
+st.markdown("""<style>
 .header-container {
-    display: flex;
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    width: 100%;
-    margin-bottom: 1.5rem;
+display: flex;
+flex-direction: row;
+justify-content: space-between;
+align-items: center;
+width: 100%;
+margin-bottom: 1.5rem;
 }
-
 @keyframes titleTextGlow {
-    0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
-    50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
-    100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
+100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
 }
-
 .title-glow-text {
-    background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    animation: titleTextGlow 4s ease-in-out infinite;
-    display: inline-block;
+background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+animation: titleTextGlow 4s ease-in-out infinite;
+display: inline-block;
 }
-
 .central-dogma-anim {
-    width: 140px;
-    height: 220px;
-    overflow: visible;
+width: 140px;
+height: 220px;
+overflow: visible;
 }
-
 @keyframes pulseGlow {
-    0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 3px #38bdf8); }
-    50% { opacity: 1; filter: drop-shadow(0 0 10px #c084fc); }
+0%, 100% { opacity: 0.6; filter: drop-shadow(0 0 3px #38bdf8); }
+50% { opacity: 1; filter: drop-shadow(0 0 10px #c084fc); }
 }
-
 @keyframes rnaFlowVertical {
-    0% { stroke-dashoffset: 40; }
-    100% { stroke-dashoffset: 0; }
+0% { stroke-dashoffset: 40; }
+100% { stroke-dashoffset: 0; }
 }
-
 @keyframes proteinFloat {
-    0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-5px); }
+0%, 100% { transform: translateY(0px); }
+50% { transform: translateY(-5px); }
 }
-
 .dna-glow {
-    animation: pulseGlow 4s ease-in-out infinite;
+animation: pulseGlow 4s ease-in-out infinite;
 }
-
 .rna-flow {
-    stroke-dasharray: 6 4;
-    animation: rnaFlowVertical 2s linear infinite;
+stroke-dasharray: 6 4;
+animation: rnaFlowVertical 2s linear infinite;
 }
-
 .floating-protein {
-    animation: proteinFloat 3s ease-in-out infinite;
+animation: proteinFloat 3s ease-in-out infinite;
 }
 </style>
-
 <div class="header-container">
-    <div style="flex: 1; min-width: 320px;">
-        <h1 style='font-size: 2.8rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
-            Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
-        </h1>
-    </div>
-    
-    <div style="flex-shrink: 0; text-align: right;">
-        <svg class="central-dogma-anim" viewBox="0 0 120 220" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-                <linearGradient id="dnaGrad" x1="0" y1="10" x2="0" y2="80" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stop-color="#38bdf8"/>
-                    <stop offset="100%" stop-color="#818cf8"/>
-                </linearGradient>
-                <linearGradient id="mrnaGrad" x1="0" y1="90" x2="0" y2="155" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stop-color="#818cf8"/>
-                    <stop offset="100%" stop-color="#c084fc"/>
-                </linearGradient>
-                <linearGradient id="proteinGrad" x1="0" y1="160" x2="0" y2="215" gradientUnits="userSpaceOnUse">
-                    <stop offset="0%" stop-color="#c084fc"/>
-                    <stop offset="100%" stop-color="#fb7185"/>
-                </linearGradient>
-            </defs>
-
-            <!-- DNA Double Helix -->
-            <g class="dna-glow">
-                <line x1="42" y1="20" x2="78" y2="20" stroke="#38bdf8" stroke-width="1.8" opacity="0.8" />
-                <line x1="36" y1="28" x2="84" y2="28" stroke="#60a5fa" stroke-width="2" opacity="0.9" />
-                <line x1="42" y1="36" x2="78" y2="36" stroke="#818cf8" stroke-width="1.8" opacity="0.8" />
-                <line x1="42" y1="54" x2="78" y2="54" stroke="#818cf8" stroke-width="1.8" opacity="0.8" />
-                <line x1="36" y1="62" x2="84" y2="62" stroke="#a78bfa" stroke-width="2" opacity="0.9" />
-                <line x1="42" y1="70" x2="78" y2="70" stroke="#c084fc" stroke-width="1.8" opacity="0.8" />
-                <path d="M 60 10 C 95 22, 95 43, 60 45 C 25 47, 25 68, 60 80" stroke="url(#dnaGrad)" stroke-width="3" stroke-linecap="round" fill="none" />
-                <path d="M 60 10 C 25 22, 25 43, 60 45 C 95 47, 95 68, 60 80" stroke="url(#dnaGrad)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8" />
-            </g>
-
-            <path d="M 60 81 L 60 91" stroke="url(#dnaGrad)" stroke-width="2" stroke-dasharray="3 3" opacity="0.6" />
-
-            <!-- mRNA Strand with Codon Nodes -->
-            <g>
-                <path class="rna-flow" d="M 60 91 C 82 104, 38 118, 60 133 C 75 143, 45 146, 60 154" stroke="url(#mrnaGrad)" stroke-width="2.8" fill="none" stroke-linecap="round" />
-                <line x1="68" y1="99" x2="75" y2="97" stroke="#818cf8" stroke-width="2" stroke-linecap="round" />
-                <circle cx="76" cy="97" r="2.2" fill="#38bdf8" />
-                <line x1="52" y1="111" x2="45" y2="113" stroke="#a855f7" stroke-width="2" stroke-linecap="round" />
-                <circle cx="44" cy="113" r="2.2" fill="#c084fc" />
-                <line x1="48" y1="123" x2="41" y2="122" stroke="#c084fc" stroke-width="2" stroke-linecap="round" />
-                <circle cx="40" cy="122" r="2.2" fill="#fb7185" />
-                <line x1="66" y1="137" x2="73" y2="136" stroke="#e879f9" stroke-width="2" stroke-linecap="round" />
-                <circle cx="74" cy="136" r="2.2" fill="#facc15" />
-            </g>
-
-            <path d="M 60 155 L 60 165" stroke="url(#mrnaGrad)" stroke-width="2" stroke-dasharray="2 2" opacity="0.6" />
-
-            <!-- Folded Protein Ribbon -->
-            <g class="floating-protein">
-                <path d="M 45 171 C 30 161, 85 159, 80 179 C 75 197, 35 187, 50 203 C 62 215, 85 199, 60 213" stroke="url(#proteinGrad)" stroke-width="3.5" fill="none" stroke-linecap="round" />
-                <circle cx="45" cy="171" r="4" fill="#38bdf8" />
-                <circle cx="80" cy="179" r="4" fill="#a855f7" />
-                <circle cx="42" cy="191" r="3.5" fill="#e879f9" />
-                <circle cx="50" cy="203" r="4.5" fill="#fb7185" />
-                <circle cx="75" cy="205" r="3.5" fill="#facc15" />
-            </g>
-        </svg>
-    </div>
-</div>""",
-    unsafe_allow_html=True,
-)
+<div style="flex: 1; min-width: 320px;">
+<h1 style='font-size: 2.8rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
+Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
+</h1>
+</div>
+<div style="flex-shrink: 0; text-align: right;">
+<svg class="central-dogma-anim" viewBox="0 0 120 220" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<linearGradient id="dnaGrad" x1="0" y1="10" x2="0" y2="80" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#38bdf8"/>
+<stop offset="100%" stop-color="#818cf8"/>
+</linearGradient>
+<linearGradient id="mrnaGrad" x1="0" y1="90" x2="0" y2="155" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#818cf8"/>
+<stop offset="100%" stop-color="#c084fc"/>
+</linearGradient>
+<linearGradient id="proteinGrad" x1="0" y1="160" x2="0" y2="215" gradientUnits="userSpaceOnUse">
+<stop offset="0%" stop-color="#c084fc"/>
+<stop offset="100%" stop-color="#fb7185"/>
+</linearGradient>
+</defs>
+<g class="dna-glow">
+<line x1="42" y1="20" x2="78" y2="20" stroke="#38bdf8" stroke-width="1.8" opacity="0.8" />
+<line x1="36" y1="28" x2="84" y2="28" stroke="#60a5fa" stroke-width="2" opacity="0.9" />
+<line x1="42" y1="36" x2="78" y2="36" stroke="#818cf8" stroke-width="1.8" opacity="0.8" />
+<line x1="42" y1="54" x2="78" y2="54" stroke="#818cf8" stroke-width="1.8" opacity="0.8" />
+<line x1="36" y1="62" x2="84" y2="62" stroke="#a78bfa" stroke-width="2" opacity="0.9" />
+<line x1="42" y1="70" x2="78" y2="70" stroke="#c084fc" stroke-width="1.8" opacity="0.8" />
+<path d="M 60 10 C 95 22, 95 43, 60 45 C 25 47, 25 68, 60 80" stroke="url(#dnaGrad)" stroke-width="3" stroke-linecap="round" fill="none" />
+<path d="M 60 10 C 25 22, 25 43, 60 45 C 95 47, 95 68, 60 80" stroke="url(#dnaGrad)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.8" />
+</g>
+<path d="M 60 81 L 60 91" stroke="url(#dnaGrad)" stroke-width="2" stroke-dasharray="3 3" opacity="0.6" />
+<g>
+<path class="rna-flow" d="M 60 91 C 82 104, 38 118, 60 133 C 75 143, 45 146, 60 154" stroke="url(#mrnaGrad)" stroke-width="2.8" fill="none" stroke-linecap="round" />
+<line x1="68" y1="99" x2="75" y2="97" stroke="#818cf8" stroke-width="2" stroke-linecap="round" />
+<circle cx="76" cy="97" r="2.2" fill="#38bdf8" />
+<line x1="52" y1="111" x2="45" y2="113" stroke="#a855f7" stroke-width="2" stroke-linecap="round" />
+<circle cx="44" cy="113" r="2.2" fill="#c084fc" />
+<line x1="48" y1="123" x2="41" y2="122" stroke="#c084fc" stroke-width="2" stroke-linecap="round" />
+<circle cx="40" cy="122" r="2.2" fill="#fb7185" />
+<line x1="66" y1="137" x2="73" y2="136" stroke="#e879f9" stroke-width="2" stroke-linecap="round" />
+<circle cx="74" cy="136" r="2.2" fill="#facc15" />
+</g>
+<path d="M 60 155 L 60 165" stroke="url(#mrnaGrad)" stroke-width="2" stroke-dasharray="2 2" opacity="0.6" />
+<g class="floating-protein">
+<path d="M 45 171 C 30 161, 85 159, 80 179 C 75 197, 35 187, 50 203 C 62 215, 85 199, 60 213" stroke="url(#proteinGrad)" stroke-width="3.5" fill="none" stroke-linecap="round" />
+<circle cx="45" cy="171" r="4" fill="#38bdf8" />
+<circle cx="80" cy="179" r="4" fill="#a855f7" />
+<circle cx="42" cy="191" r="3.5" fill="#e879f9" />
+<circle cx="50" cy="203" r="4.5" fill="#fb7185" />
+<circle cx="75" cy="205" r="3.5" fill="#facc15" />
+</g>
+</svg>
+</div>
+</div>""", unsafe_allow_html=True)
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
     "NCBI Entrez Email", value="your.email@example.com"
