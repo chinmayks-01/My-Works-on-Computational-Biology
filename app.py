@@ -25,10 +25,10 @@ AA_NAMES = {
 }
 
 def inject_custom_ui_theme():
-    """Injects a deep black breathing background, glassmorphism UI, and a blurry light sweep."""
+    """Injects a deep black breathing background, glassmorphism UI, and side-by-side radio cards."""
     css = """
     <style>
-    /* 1. Base Black Breathing Background */
+    /* 1. Base Deep Black Background */
     @keyframes breathingGradient {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
@@ -42,33 +42,33 @@ def inject_custom_ui_theme():
         color: #f8fafc;
     }
 
-    /* 2. Blurry Diagonal Light Streak (Cyan/Blue Sweep) */
+    /* 2. Customizable Blurry Light Zone */
     @keyframes lightSweep {
-        0% { background-position: 0% 0%; opacity: 0.15; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(1.05); }
-        100% { background-position: 100% 100%; opacity: 0.15; transform: scale(1); }
+        0% { opacity: 0.2; transform: scale(1); }
+        50% { opacity: 0.6; transform: scale(1.15); }
+        100% { opacity: 0.2; transform: scale(1); }
     }
 
     .stApp::after {
         content: "";
         position: fixed;
-        top: 0; left: 0; right: 0; bottom: 0;
+        top: -20%; left: -20%; width: 140%; height: 140%;
         background: linear-gradient(
-            115deg, 
-            transparent 25%, 
-            rgba(56, 189, 248, 0.08) 45%, /* Soft cyan glow */
-            rgba(37, 99, 235, 0.12) 50%,  /* Deep blue center */
-            rgba(56, 189, 248, 0.08) 55%, 
-            transparent 75%
+            125deg, 
+            transparent 15%, 
+            rgba(56, 189, 248, 0.12) 35%, 
+            rgba(37, 99, 235, 0.22) 50%, 
+            rgba(56, 189, 248, 0.12) 65%, 
+            transparent 85%
         );
         background-size: 200% 200%;
-        filter: blur(70px);
+        filter: blur(100px);
         pointer-events: none;
         z-index: 0;
-        animation: lightSweep 12s ease-in-out infinite alternate;
+        animation: lightSweep 14s ease-in-out infinite alternate;
     }
 
-    /* Elevate content above the background effect */
+    /* Elevate content above background light layer */
     .block-container {
         position: relative;
         z-index: 1;
@@ -86,7 +86,7 @@ def inject_custom_ui_theme():
         z-index: 2;
     }
 
-    /* Headers and Text Styling */
+    /* Headers & Text */
     h1, h2, h3 {
         color: #f1f5f9 !important;
         font-weight: 700 !important;
@@ -112,7 +112,7 @@ def inject_custom_ui_theme():
         box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
     }
 
-    /* Glassmorphism Sidebar */
+    /* Sidebar */
     section[data-testid="stSidebar"] {
         background-color: rgba(10, 10, 12, 0.85) !important;
         backdrop-filter: blur(16px);
@@ -122,6 +122,41 @@ def inject_custom_ui_theme():
     
     header[data-testid="stHeader"] {
         background: transparent !important;
+    }
+
+    /* --- SIDE-BY-SIDE SELECTABLE GLASS CARDS FOR RADIO BUTTONS --- */
+    div[data-testid="stRadio"] > div {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 16px !important;
+        width: 100% !important;
+    }
+
+    div[data-testid="stRadio"] label {
+        flex: 1 !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        backdrop-filter: blur(10px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 10px !important;
+        padding: 14px 20px !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    /* Card Hover State */
+    div[data-testid="stRadio"] label:hover {
+        background: rgba(56, 189, 248, 0.08) !important;
+        border-color: rgba(56, 189, 248, 0.4) !important;
+        transform: translateY(-1px);
+    }
+
+    /* Active Selected Card Highlight */
+    div[data-testid="stRadio"] label:has(input:checked) {
+        background: rgba(56, 189, 248, 0.12) !important;
+        border-color: #38bdf8 !important;
+        box-shadow: 0 0 15px rgba(56, 189, 248, 0.2) !important;
     }
     </style>
     """
@@ -342,24 +377,11 @@ inject_custom_ui_theme()
 st.markdown(
     """
     <style>
-    /* Breathing Glow Aura strictly behind the Title Text */
     @keyframes titleTextGlow {
-        0% {
-            /* Tight, softer glow */
-            filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)) 
-                    drop-shadow(0px 0px 16px rgba(37, 99, 235, 0.25));
-        }
-        50% {
-            /* Expanded, intense light area behind letters */
-            filter: drop-shadow(0px 0px 28px rgba(56, 189, 248, 0.95)) 
-                    drop-shadow(0px 0px 55px rgba(37, 99, 235, 0.85));
-        }
-        100% {
-            filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)) 
-                    drop-shadow(0px 0px 16px rgba(37, 99, 235, 0.25));
-        }
+        0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)) drop-shadow(0px 0px 16px rgba(37, 99, 235, 0.25)); }
+        50% { filter: drop-shadow(0px 0px 28px rgba(56, 189, 248, 0.95)) drop-shadow(0px 0px 55px rgba(37, 99, 235, 0.85)); }
+        100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)) drop-shadow(0px 0px 16px rgba(37, 99, 235, 0.25)); }
     }
-
     .title-glow-text {
         background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
         -webkit-background-clip: text;
@@ -383,17 +405,14 @@ user_email = st.sidebar.text_input("NCBI Entrez Email", value="your.email@exampl
 Entrez.email = user_email
 
 
-st.header("1. Input Sequence🧬")
-input_option = st.radio("Choose Input Method:", ("Raw Sequence / Accession ID", "Upload FASTA File"))
+st.header("1. Input Sequence")
 
-raw_input = ""
-uploaded_file = None
-
-if input_option == "Raw Sequence / Accession ID":
-    raw_input = st.text_area("Enter Sequence or Accession ID:", value="", placeholder="e.g. NM_000518 or ATGCG...")
-else:
-    uploaded_file = st.file_uploader("Upload FASTA file", type=["fasta", "fas", "fa"])
-
+input_option = st.radio(
+    "Choose Input Method:",
+    options=["Raw Sequence / Accession ID", "Upload FASTA File"],
+    horizontal=True,
+    label_visibility="visible"
+)
 if st.button("Run Pipeline", type="primary"):
     with st.spinner("Processing input sequence..."):
         sequence = fetch_sequence(raw_input, uploaded_file)
