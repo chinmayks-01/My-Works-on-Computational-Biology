@@ -724,6 +724,7 @@ html_content = """<style>
 
 # Render the HTML safely
 st.markdown(html_content, unsafe_allow_html=True)
+
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
     "NCBI Entrez Email", value="your.email@example.com"
