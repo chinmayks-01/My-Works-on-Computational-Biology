@@ -166,42 +166,6 @@ def inject_custom_ui_theme():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-def auto_scroll():
-    """Aggressive Javascript injection to force Streamlit to scroll down."""
-    scroll_js = """
-    <script>
-        function forceScroll() {
-            try {
-                const parent = window.parent.document;
-                // Streamlit uses different scroll containers depending on the version and layout
-                const targets = [
-                    parent.querySelector('[data-testid="stAppViewContainer"]'),
-                    parent.querySelector('.main'),
-                    parent.querySelector('.stApp'),
-                    parent.documentElement,
-                    parent.body
-                ];
-                
-                for (let target of targets) {
-                    if (target && target.scrollHeight > target.clientHeight) {
-                        target.scrollTo({ top: target.scrollHeight, behavior: 'smooth' });
-                        return; // Stop once we successfully find and scroll the active container
-                    }
-                }
-            } catch (e) {
-                console.log("Auto-scroll failed: ", e);
-            }
-        }
-        
-        // Fire at staggered intervals to catch the DOM as heavy elements (like DataFrames and 3D viewers) render
-        setTimeout(forceScroll, 100);
-        setTimeout(forceScroll, 600);
-        setTimeout(forceScroll, 1200);
-        setTimeout(forceScroll, 2000);
-    </script>
-    """
-    components.html(scroll_js, height=0, width=0)
-
 def render_protein_3d_viewer(
     pdb_input: str, is_pdb_id: bool = True, height: int = 480
 ):
@@ -818,7 +782,6 @@ if st.button("Run Pipeline", type="primary"):
         )
     else:
         st.success("Sequence successfully loaded!")
-        auto_scroll()
 
         st.header("Identification & BLAST Analysis")
         with st.spinner("Analyzing sequence type and querying BLAST..."):
@@ -839,8 +802,6 @@ if st.button("Run Pipeline", type="primary"):
                 st.dataframe(df_matches, use_container_width=True)
             else:
                 st.info("No significant BLAST hits found.")
-                
-            auto_scroll()
 
             st.header("Transcription & Translation")
             transcript, protein_seq = central_dogma_pipeline(
@@ -861,8 +822,6 @@ if st.button("Run Pipeline", type="primary"):
                 st.caption(
                     "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
                 )
-                
-            auto_scroll()
 
             st.header("Protein Analysis")
             col_a, col_b = st.columns(2)
@@ -886,12 +845,13 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            auto_scroll()
-            
             st.header("Protein Structure Visualization")
 
             pdb_data = None
             used_engine = ""
+            
+            COLABFOLD_API = "https://your-backend-endpoint.ngrok-free.app"
+            is_dummy_url = "your-backend-endpoint" in COLABFOLD_API
             
             # AUTOMATIC STRUCTURE PREDICTION ROUTING
             if len(protein_seq) <= 400:
@@ -902,23 +862,24 @@ if st.button("Run Pipeline", type="primary"):
                 if pdb_data:
                     used_engine = "ESMFold API"
                 else:
-                    st.warning("ESMFold API failed or returned an empty response. Falling back to ColabFold...")
-                    with st.spinner("Generating MSAs and predicting structure using ColabFold (1–3 mins)..."):
-                        COLABFOLD_API = "https://banshee-remedy-oblong.ngrok-free.dev"
+                    st.warning("⚠️ Meta's public ESMFold API is currently offline or unreachable.")
+                    if not is_dummy_url:
+                        with st.spinner("Attempting ColabFold fallback..."):
+                            pdb_data = predict_structure_colabfold(protein_seq, api_url=COLABFOLD_API)
+                            if pdb_data:
+                                used_engine = "ColabFold/AlphaFold2"
+            else:
+                st.info(f"Sequence length (**{len(protein_seq)} aa**) exceeds ESMFold's 400 aa limit.")
+                if not is_dummy_url:
+                    with st.spinner("Predicting using ColabFold..."):
                         pdb_data = predict_structure_colabfold(protein_seq, api_url=COLABFOLD_API)
                         if pdb_data:
                             used_engine = "ColabFold/AlphaFold2"
-            else:
-                st.info(f"Sequence length (**{len(protein_seq)} aa**) exceeds ESMFold's 400 aa limit. Automatically shifting to **ColabFold / AlphaFold2**...")
-                with st.spinner("Generating MSAs and predicting structure using ColabFold (1–3 mins)..."):
-                    COLABFOLD_API = "https://banshee-remedy-oblong.ngrok-free.dev"
-                    pdb_data = predict_structure_colabfold(protein_seq, api_url=COLABFOLD_API)
-                    if pdb_data:
-                        used_engine = "ColabFold/AlphaFold2"
+                else:
+                    st.error("Structure prediction skipped: Sequence is too long for ESMFold, and no active ColabFold backend URL has been provided.")
 
             if pdb_data:
                 st.success(f"3D Structure predicted successfully using **{used_engine}**!")
-                auto_scroll()
 
                 st.subheader("Interactive 3D Structure Viewer")
                 render_protein_3d_viewer(
@@ -931,5 +892,5 @@ if st.button("Run Pipeline", type="primary"):
                     file_name="predicted_structure.pdb",
                     mime="chemical/x-pdb",
                 )
-            else:
-                st.error("Failed to predict 3D structure. Please verify the sequence validity and backend connection.")
+            elif is_dummy_url:
+                st.info("ℹ️ Note: 3D structure prediction is currently unavailable because Meta's public ESMFold API is down and no custom ColabFold backend is connected.")
