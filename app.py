@@ -178,6 +178,7 @@ def inject_custom_ui_theme():
 def render_protein_3d_viewer(
     pdb_input: str, is_pdb_id: bool = True, height: int = 480
 ):
+    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js."""
     if is_pdb_id:
         fetch_js = f"v.addModelAsPdbId('{pdb_input.strip()}');"
     else:
@@ -196,7 +197,7 @@ def render_protein_3d_viewer(
         <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
         <style>
             * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: -apple-system, sans-serif; }}
+            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }}
             .viewer-wrapper {{
                 position: relative; width: 100%; height: {height}px;
                 background: rgba(10, 10, 12, 0.6); backdrop-filter: blur(12px);
@@ -207,10 +208,11 @@ def render_protein_3d_viewer(
                 position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
                 display: flex; gap: 6px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px);
                 padding: 6px 12px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 10;
+                width: max-content; max-width: 92%; overflow-x: auto;
             }}
             .control-btn {{
                 background: rgba(255, 255, 255, 0.08); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 20px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
+                border-radius: 20px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
             }}
             .control-btn:active, .control-btn.active {{ background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; color: #38bdf8; }}
         </style>
@@ -578,7 +580,6 @@ def color_protein_sequence_block(seq: str) -> str:
 
 inject_custom_ui_theme()
 
-# --- RESTORED HEADER BANNER & ANIMATION ---
 st.markdown(
     """<style>
 .header-container {
@@ -707,6 +708,11 @@ user_email = st.sidebar.text_input(
 Entrez.email = user_email
 
 st.header("Input Sequence")
+st.markdown(
+    "<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>",
+    unsafe_allow_html=True,
+)
+
 input_option = st.radio(
     "Choose Input Method:",
     options=["Raw Sequence / Accession ID", "Upload FASTA File"],
@@ -716,6 +722,7 @@ input_option = st.radio(
 
 raw_input = ""
 uploaded_file = None
+
 if input_option == "Raw Sequence / Accession ID":
     raw_input = st.text_area(
         "Enter Sequence or Accession ID:",
@@ -733,10 +740,15 @@ if st.button("Run Pipeline", type="primary"):
         sequence = fetch_sequence(raw_input, uploaded_file)
 
     if not sequence:
-        st.error("No valid sequence input detected.")
+        st.error(
+            "No valid sequence input detected. Please provide a sequence, accession ID, or FASTA file."
+        )
     else:
         st.success("Sequence successfully loaded!")
-        seq_type, gc_content, gene_matches = identify_sequence(sequence)
+
+        st.header("Identification & BLAST Analysis")
+        with st.spinner("Analyzing sequence type and querying BLAST..."):
+            seq_type, gc_content, gene_matches = identify_sequence(sequence)
 
         if seq_type:
             col1, col2, col3 = st.columns(3)
@@ -747,15 +759,35 @@ if st.button("Run Pipeline", type="primary"):
             )
             col3.metric("Sequence Length", f"{len(sequence)} bp/aa")
 
+            st.subheader("Top 5 Gene Matches (NCBI BLAST)")
+            if gene_matches:
+                df_matches = pd.DataFrame(gene_matches)
+                st.dataframe(df_matches, use_container_width=True)
+            else:
+                st.info("No significant BLAST hits found.")
+
             st.header("Transcription & Translation")
             transcript, protein_seq = central_dogma_pipeline(
                 sequence, seq_type
             )
+
             if transcript:
                 with st.expander("View mRNA Transcript"):
                     st.text_area("RNA Sequence", transcript, height=100)
 
-            st.header("Open Reading Frame (ORF) Viewer & Diagram Map")
+            with st.expander(
+                "View Translated Protein Sequence", expanded=True
+            ):
+                st.markdown(
+                    color_protein_sequence_block(protein_seq),
+                    unsafe_allow_html=True,
+                )
+                st.caption(
+                    "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
+                )
+
+            # --- ORF VIEWER & GRAPHICAL MAP INTEGRATION ---
+            st.header("Open Reading Frame (ORF) Diagram Map")
             if seq_type in ["DNA", "RNA"]:
                 dna_for_orf = sequence.replace("U", "T")
                 min_len = st.slider(
@@ -766,7 +798,7 @@ if st.button("Run Pipeline", type="primary"):
                     step=5,
                 )
 
-                with st.spinner("Scanning 6 reading frames..."):
+                with st.spinner("Scanning 6 reading frames for ORFs..."):
                     orf_list = find_orfs(
                         dna_for_orf, min_protein_length=min_len
                     )
@@ -785,9 +817,13 @@ if st.button("Run Pipeline", type="primary"):
                         options=df_orfs.index,
                         format_func=lambda x: f"ORF {x+1} | Strand: {df_orfs.loc[x, 'Strand']} | Frame: {df_orfs.loc[x, 'Frame']} | Length: {df_orfs.loc[x, 'Length (aa)']} aa",
                     )
+
                     chosen_protein = df_orfs.loc[
                         selected_orf_idx, "Protein Sequence"
                     ]
+                    st.subheader(
+                        f"Selected ORF #{selected_orf_idx+1} Translation"
+                    )
                     st.markdown(
                         color_protein_sequence_block(chosen_protein),
                         unsafe_allow_html=True,
@@ -803,31 +839,78 @@ if st.button("Run Pipeline", type="primary"):
 
             st.header("Protein Analysis")
             col_a, col_b = st.columns(2)
+
             with col_a:
                 st.subheader("Top 10 Amino Acids Frequency")
-                st.dataframe(
-                    analyze_amino_acids(protein_seq), use_container_width=True
-                )
+                df_aa = analyze_amino_acids(protein_seq)
+                if not df_aa.empty:
+                    st.dataframe(df_aa, use_container_width=True)
+                else:
+                    st.write("No amino acid data available.")
+
             with col_b:
                 st.subheader("Top PDB Sequence Matches")
-                st.dataframe(
-                    pd.DataFrame(fetch_pdb_similar(protein_seq)),
-                    use_container_width=True,
-                )
+                with st.spinner("Searching RCSB PDB..."):
+                    matches = fetch_pdb_similar(protein_seq)
+                if matches:
+                    st.dataframe(
+                        pd.DataFrame(matches), use_container_width=True
+                    )
+                else:
+                    st.write("No significant RCSB PDB matches found.")
 
             st.header("Protein Structure Visualization")
-            if len(protein_seq) <= 400:
-                with st.spinner("Predicting 3D structure using ESMFold..."):
-                    pdb_data = predict_structure_esm(protein_seq)
-                if pdb_data:
-                    render_protein_3d_viewer(
-                        pdb_input=pdb_data, is_pdb_id=False, height=500
+
+            engine = st.radio(
+                "Select Prediction Engine:",
+                options=[
+                    "ESMFold (Ultra-Fast | <400 aa)",
+                    "ColabFold / AlphaFold2 (High-Accuracy | Up to 1200 aa)",
+                ],
+                horizontal=True,
+                key="structure_prediction_engine",
+            )
+
+            pdb_data = None
+
+            if "ESMFold" in engine:
+                if len(protein_seq) > 400:
+                    st.warning(
+                        "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to shorter sequences."
                     )
-                    st.download_button(
-                        "Download PDB File",
-                        data=pdb_data,
-                        file_name="predicted_structure.pdb",
-                        mime="chemical/x-pdb",
-                    )
+                else:
+                    with st.spinner(
+                        "Predicting 3D structure using ESMFold..."
+                    ):
+                        pdb_data = predict_structure_esm(protein_seq)
             else:
-                st.warning("Protein length exceeds 400 amino acids for ESMFold.")
+                with st.spinner(
+                    "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
+                ):
+                    COLABFOLD_API = (
+                        "https://banshee-remedy-oblong.ngrok-free.dev/"
+                    )
+                    pdb_data = predict_structure_colabfold(
+                        protein_seq, api_url=COLABFOLD_API
+                    )
+
+            if pdb_data:
+                st.success("3D Structure predicted successfully!")
+
+                st.subheader("Interactive 3D Structure Viewer")
+                render_protein_3d_viewer(
+                    pdb_input=pdb_data, is_pdb_id=False, height=500
+                )
+
+                st.download_button(
+                    label="Download PDB File",
+                    data=pdb_data,
+                    file_name="predicted_structure.pdb",
+                    mime="chemical/x-pdb",
+                )
+            elif "ESMFold" in engine and len(protein_seq) <= 400:
+                st.error("Failed to predict 3D structure using ESMFold API.")
+            elif "ColabFold" in engine:
+                st.error(
+                    "Failed to predict 3D structure using ColabFold API. Check backend connection."
+                )
