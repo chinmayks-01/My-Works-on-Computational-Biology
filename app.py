@@ -124,15 +124,15 @@ def inject_custom_ui_theme():
         background: transparent !important;
     }
 
-    /* --- SIDE-BY-SIDE SELECTABLE GLASS CARDS FOR RADIO BUTTONS --- */
-    div[data-testid="stRadio"] > div {
+    /* --- SIDE-BY-SIDE SELECTABLE GLASS CARDS FOR RADIO OPTIONS ONLY --- */
+    div[data-testid="stRadio"] div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
         gap: 16px !important;
         width: 100% !important;
     }
 
-    div[data-testid="stRadio"] label {
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
         flex: 1 !important;
         background: rgba(255, 255, 255, 0.03) !important;
         backdrop-filter: blur(10px) !important;
@@ -146,14 +146,14 @@ def inject_custom_ui_theme():
     }
 
     /* Card Hover State */
-    div[data-testid="stRadio"] label:hover {
+    div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
         background: rgba(56, 189, 248, 0.08) !important;
         border-color: rgba(56, 189, 248, 0.4) !important;
         transform: translateY(-1px);
     }
 
     /* Active Selected Card Highlight */
-    div[data-testid="stRadio"] label:has(input:checked) {
+    div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
         background: rgba(56, 189, 248, 0.12) !important;
         border-color: #38bdf8 !important;
         box-shadow: 0 0 15px rgba(56, 189, 248, 0.2) !important;
@@ -408,19 +408,22 @@ Entrez.email = user_email
 # --- SECTION 1: INPUT SEQUENCE ---
 st.header("1. Input Sequence")
 
-# Side-by-side card radio buttons
+# Normal plain text label
+st.markdown("<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>", unsafe_allow_html=True)
+
+# Radio options with hidden internal label
 input_option = st.radio(
     "Choose Input Method:",
     options=["Raw Sequence / Accession ID", "Upload FASTA File"],
     horizontal=True,
-    label_visibility="visible"
+    label_visibility="collapsed"
 )
 
-# Initialize variables to prevent NameError
+# Initialize variables
 raw_input = ""
 uploaded_file = None
 
-# Render input UI dynamically based on the selected card
+# Render input dynamic field
 if input_option == "Raw Sequence / Accession ID":
     raw_input = st.text_area(
         "Enter Sequence or Accession ID:",
