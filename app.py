@@ -1,28 +1,47 @@
+from collections import Counter
+import io
 import os
 import time
-import requests
-import pandas as pd
 import xml.etree.ElementTree as ET
-from collections import Counter
-import streamlit as st
-import py3Dmol
+from textwrap import dedent
+
 from Bio import Entrez, SeqIO
 from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
 from Bio.SeqUtils import gc_fraction
+import pandas as pd
+import py3Dmol
+import requests
+import streamlit as st
 import streamlit.components.v1 as components
-from textwrap import dedent
+from stmol import showmol
 
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
 
 AA_NAMES = {
-    'A': 'Alanine', 'C': 'Cysteine', 'D': 'Aspartic Acid', 'E': 'Glutamic Acid',
-    'F': 'Phenylalanine', 'G': 'Glycine', 'H': 'Histidine', 'I': 'Isoleucine',
-    'K': 'Lysine', 'L': 'Leucine', 'M': 'Methionine', 'N': 'Asparagine',
-    'P': 'Proline', 'Q': 'Glutamine', 'R': 'Arginine', 'S': 'Serine',
-    'T': 'Threonine', 'V': 'Valine', 'W': 'Tryptophan', 'Y': 'Tyrosine'
+    "A": "Alanine",
+    "C": "Cysteine",
+    "D": "Aspartic Acid",
+    "E": "Glutamic Acid",
+    "F": "Phenylalanine",
+    "G": "Glycine",
+    "H": "Histidine",
+    "I": "Isoleucine",
+    "K": "Lysine",
+    "L": "Leucine",
+    "M": "Methionine",
+    "N": "Asparagine",
+    "P": "Proline",
+    "Q": "Glutamine",
+    "R": "Arginine",
+    "S": "Serine",
+    "T": "Threonine",
+    "V": "Valine",
+    "W": "Tryptophan",
+    "Y": "Tyrosine",
 }
+
 
 def inject_custom_ui_theme():
     """Injects dynamic breathing background, glassmorphism UI, and equal-sized side-by-side radio cards."""
@@ -165,17 +184,11 @@ def inject_custom_ui_theme():
     """
     st.markdown(css, unsafe_allow_html=True)
 
+
 def render_protein_3d_viewer(
     pdb_input: str, is_pdb_id: bool = True, height: int = 480
 ):
-    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js.
-
-    Parameters:
-    - pdb_input: PDB ID string (e.g. '1A2C') OR raw PDB file contents.
-    - is_pdb_id: True if passing a 4-letter PDB ID, False if passing raw PDB string (e.g., from ESMFold).
-    - height: Height of the canvas in pixels.
-    """
-    # Sanitize string input for JavaScript injection if raw PDB data is passed
+    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js."""
     if is_pdb_id:
         fetch_js = f"v.addModelAsPdbId('{pdb_input.strip()}');"
     else:
@@ -206,7 +219,6 @@ def render_protein_3d_viewer(
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }}
             
-            /* Glassmorphism Outer Wrapper */
             .viewer-wrapper {{
                 position: relative;
                 width: 100%;
@@ -218,14 +230,12 @@ def render_protein_3d_viewer(
                 overflow: hidden;
             }}
 
-            /* Canvas Container - touch-action: none prevents parent page scrolling during 3D rotation */
             #viewport {{
                 width: 100%;
                 height: 100%;
                 touch-action: none;
             }}
 
-            /* Mobile Floating Quick Action Toolbar */
             .controls-bar {{
                 position: absolute;
                 bottom: 12px;
@@ -264,7 +274,6 @@ def render_protein_3d_viewer(
                 color: #38bdf8;
             }}
 
-            /* Mobile Gesture Hint Badge */
             .gesture-hint {{
                 position: absolute;
                 top: 10px;
@@ -318,14 +327,13 @@ def render_protein_3d_viewer(
                 if (!viewer) return;
                 currentStyle = type;
                 
-                // Update active state on buttons
                 document.querySelectorAll('.control-btn').forEach(btn => {{
                     if(['Cartoon', 'Sticks', 'Sphere'].includes(btn.innerText)) {{
                         btn.classList.remove('active');
                     }}
                 }});
 
-                viewer.setStyle({{}}, {{}}); // Clear existing styles
+                viewer.setStyle({{}}, {{}});
 
                 if (type === 'cartoon') {{
                     viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
@@ -367,23 +375,24 @@ def render_protein_3d_viewer(
     """
     components.html(html_code, height=height + 10, scrolling=False)
 
+
 def fetch_sequence(input_query: str, uploaded_file) -> str:
     """Parses an uploaded FASTA file, fetches an Accession ID, or processes raw text."""
     if uploaded_file is not None:
         string_data = uploaded_file.getvalue().decode("utf-8")
-        from io import StringIO
-        record = SeqIO.read(StringIO(string_data), "fasta")
+        record = SeqIO.read(io.StringIO(string_data), "fasta")
         return str(record.seq).upper()
-    
+
     input_query = input_query.strip()
     if not input_query:
         return ""
-        
-    
+
     if any(char.isdigit() for char in input_query) and len(input_query) < 20:
         for db in ["nucleotide", "protein"]:
             try:
-                handle = Entrez.efetch(db=db, id=input_query, rettype="fasta", retmode="text")
+                handle = Entrez.efetch(
+                    db=db, id=input_query, rettype="fasta", retmode="text"
+                )
                 record = SeqIO.read(handle, "fasta")
                 handle.close()
                 return str(record.seq).upper()
@@ -391,8 +400,7 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
                 continue
         st.error("Could not fetch sequence for the given Accession ID.")
         return ""
-    
-    
+
     return input_query.replace(" ", "").replace("\n", "").upper()
 
 
@@ -416,64 +424,68 @@ def identify_sequence(seq: str):
 
     gc_content = gc_fraction(seq) * 100 if seq_type in ["DNA", "RNA"] else None
 
-    
     program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
     database = "nt" if seq_type in ["DNA", "RNA"] else "nr"
-    
+
     gene_matches = []
-    
+
     try:
-        
         result_handle = NCBIWWW.qblast(
-            program=program, 
-            database=database, 
-            sequence=seq,
-            hitlist_size=5  
+            program=program, database=database, sequence=seq, hitlist_size=5
         )
         blast_xml = result_handle.read()
         result_handle.close()
 
         root = ET.fromstring(blast_xml)
-        query_len = float(root.find(".//BlastOutput_query-len").text) if root.find(".//BlastOutput_query-len") is not None else len(seq)
-        
-        
+
         for hit in root.findall(".//Hit")[:5]:
-            
             accession_elem = hit.find("Hit_accession")
-            accession_id = accession_elem.text if accession_elem is not None else "N/A"
-            
-            
+            accession_id = (
+                accession_elem.text if accession_elem is not None else "N/A"
+            )
+
             title_elem = hit.find("Hit_def")
-            title = title_elem.text if title_elem is not None else "Unknown Gene"
-            
-            
+            title = (
+                title_elem.text if title_elem is not None else "Unknown Gene"
+            )
+
             hsp = hit.find(".//Hsp")
             hit_gc = None
             pct_match = 0.0
-            
+
             if hsp is not None:
-                
                 identity_elem = hsp.find("Hsp_identity")
                 align_len_elem = hsp.find("Hsp_align-len")
-                if identity_elem is not None and align_len_elem is not None:
+                if (
+                    identity_elem is not None
+                    and align_len_elem is not None
+                    and float(align_len_elem.text) > 0
+                ):
                     identity = float(identity_elem.text)
                     align_len = float(align_len_elem.text)
-                    pct_match = (identity / align_len) * 100 if align_len > 0 else 0.0
-                
-                
+                    pct_match = (identity / align_len) * 100
+
                 hseq_elem = hsp.find("Hsp_hseq")
-                if hseq_elem is not None and hseq_elem.text and seq_type in ["DNA", "RNA"]:
+                if (
+                    hseq_elem is not None
+                    and hseq_elem.text
+                    and seq_type in ["DNA", "RNA"]
+                ):
                     target_seq = hseq_elem.text.upper().replace("-", "")
                     if target_seq:
                         hit_gc = gc_fraction(target_seq) * 100
-            
-            gene_matches.append({
-                "Gene Name": title,
-                "Accession ID": accession_id,
-                "GC Content (%)": f"{hit_gc:.2f}" if hit_gc is not None else "N/A",
-                "Match Percentage (%)": f"{pct_match:.2f}"
-            })
-            
+
+            gene_matches.append(
+                {
+                    "Gene Name": title,
+                    "Accession ID": accession_id,
+                    "GC Content (%)": f"{hit_gc:.2f}"
+                    if hit_gc is not None
+                    else "N/A",
+                    "Match Percentage (%)": f"{pct_match:.2f}",
+                }
+            )
+
     except Exception as e:
         st.warning(f"NCBI BLAST query encounter: {e}")
 
@@ -481,33 +493,99 @@ def identify_sequence(seq: str):
 
 
 def central_dogma_pipeline(seq: str, seq_type: str):
-    """Handles transcription and translation."""
+    """Handles transcription and translation without early truncation."""
     bio_seq = Seq(seq)
     transcript = None
-    
+
     if seq_type == "DNA":
         transcript = str(bio_seq.transcribe())
-        protein = str(bio_seq.translate())  # Removed to_stop=True
+        protein = str(bio_seq.translate())
     elif seq_type == "RNA":
         transcript = seq
-        protein = str(bio_seq.translate())  # Removed to_stop=True
+        protein = str(bio_seq.translate())
     else:
         protein = seq
 
     return transcript, protein
+
+
+def find_orfs(dna_seq: str, min_protein_length: int = 30):
+    """Finds all open reading frames (ORFs) across all 6 reading frames of a DNA sequence."""
+    orfs = []
+    seq_obj = Seq(dna_seq)
+
+    for strand, target_seq in [
+        ("+", seq_obj),
+        ("-", seq_obj.reverse_complement()),
+    ]:
+        target_str = str(target_seq)
+        for frame in range(3):
+            translated = target_str[frame:].translate(to_stop=False)
+            i = 0
+            while i < len(translated):
+                start_idx = translated.find("M", i)
+                if start_idx == -1:
+                    break
+
+                stop_idx = translated.find("*", start_idx)
+                if stop_idx == -1:
+                    protein_len = len(translated) - start_idx
+                    if protein_len >= min_protein_length:
+                        orfs.append(
+                            {
+                                "Strand": strand,
+                                "Frame": f"Frame +{frame+1}"
+                                if strand == "+"
+                                else f"Frame -{frame+1}",
+                                "Start (nt)": (start_idx * 3) + frame + 1,
+                                "End (nt)": len(target_str),
+                                "Length (aa)": protein_len,
+                                "Protein Sequence": translated[start_idx:],
+                            }
+                        )
+                    break
+                else:
+                    protein_len = stop_idx - start_idx
+                    if protein_len >= min_protein_length:
+                        orfs.append(
+                            {
+                                "Strand": strand,
+                                "Frame": f"Frame +{frame+1}"
+                                if strand == "+"
+                                else f"Frame -{frame+1}",
+                                "Start (nt)": (start_idx * 3) + frame + 1,
+                                "End (nt)": (stop_idx * 3) + frame + 3,
+                                "Length (aa)": protein_len,
+                                "Protein Sequence": translated[
+                                    start_idx:stop_idx
+                                ],
+                            }
+                        )
+                    i = stop_idx + 1
+    return orfs
+
 
 def fetch_pdb_similar(protein_seq: str):
     """Fetches top 5 similar structures from RCSB PDB."""
     url = "https://search.rcsb.org/rcsbsearch/v2/query"
     query = {
         "query": {
-            "type": "terminal", "service": "sequence",
-            "parameters": {"evalue_cutoff": 1, "identity_cutoff": 0.3, "target": "pdb_protein_sequence", "value": protein_seq}
+            "type": "terminal",
+            "service": "sequence",
+            "parameters": {
+                "evalue_cutoff": 1,
+                "identity_cutoff": 0.3,
+                "target": "pdb_protein_sequence",
+                "value": protein_seq,
+            },
         },
         "return_type": "polymer_entity",
-        "request_options": {"paginate": {"start": 0, "rows": 5}, "scoring_strategy": "sequence"}
+        "request_options": {
+            "paginate": {"start": 0, "rows": 5},
+            "scoring_strategy": "sequence",
+        },
     }
-    
+
     response = requests.post(url, json=query)
     pdb_matches = []
     if response.status_code == 200:
@@ -515,36 +593,48 @@ def fetch_pdb_similar(protein_seq: str):
         for item in results:
             pdb_id = item["identifier"].split("_")[0]
             match_pct = item.get("score", 0) * 100
-            pdb_matches.append({"PDB ID": pdb_id, "Sequence Identity (%)": f"{match_pct:.2f}"})
+            pdb_matches.append(
+                {
+                    "PDB ID": pdb_id,
+                    "Sequence Identity (%)": f"{match_pct:.2f}",
+                }
+            )
     return pdb_matches
 
 
 def analyze_amino_acids(protein_seq: str):
     """Calculates top 10 most frequent amino acids."""
+    if not protein_seq:
+        return pd.DataFrame()
     total_aa = len(protein_seq)
     counts = Counter(protein_seq)
     valid_counts = {aa: count for aa, count in counts.items() if aa in AA_NAMES}
     top_10 = Counter(valid_counts).most_common(10)
-    
+
     data = []
     for aa, count in top_10:
         pct = (count / total_aa) * 100
-        data.append({
-            "Amino Acid": AA_NAMES[aa],
-            "Code": aa,
-            "Count": count,
-            "Percentage (%)": round(pct, 2)
-        })
+        data.append(
+            {
+                "Amino Acid": AA_NAMES[aa],
+                "Code": aa,
+                "Count": count,
+                "Percentage (%)": round(pct, 2),
+            }
+        )
     return pd.DataFrame(data)
 
 
 def predict_structure_esm(protein_seq: str):
     """Predicts 3D structure using ESMFold API."""
     url = "https://api.esmatlas.com/foldSequence/v1/pdb/"
-    res = requests.post(url, data=protein_seq, headers={"Content-Type": "text/plain"})
+    res = requests.post(
+        url, data=protein_seq, headers={"Content-Type": "text/plain"}
+    )
     if res.status_code == 200:
         return res.text
     return None
+
 
 def predict_structure_colabfold(
     sequence: str, api_url: str = "YOUR_COLABFOLD_API_ENDPOINT"
@@ -566,41 +656,49 @@ def predict_structure_colabfold(
         st.error(f"Failed to connect to ColabFold service: {str(e)}")
         return None
 
+
 def color_protein_sequence_block(seq: str) -> str:
     """Renders sequence with solid colored background blocks matching standard MSA/Clustal tools."""
     bg_colors = {
-        'A': '#80a0f0', 'I': '#80a0f0', 'L': '#80a0f0', 'M': '#80a0f0', 'F': '#80a0f0', 'W': '#80a0f0', 'V': '#80a0f0',
-        'R': '#f01505', 'K': '#f01505',
-        'N': '#00ff00', 'Q': '#00ff00',
-        'D': '#c000c0', 'E': '#c000c0',
-        'C': '#f08080',
-        'G': '#f09040',
-        'P': '#ffff00',
-        'H': '#15a4a4', 'Y': '#15a4a4',
-        'S': '#15a400', 'T': '#15a400'
+        "A": "#80a0f0",
+        "I": "#80a0f0",
+        "L": "#80a0f0",
+        "M": "#80a0f0",
+        "F": "#80a0f0",
+        "W": "#80a0f0",
+        "V": "#80a0f0",
+        "R": "#f01505",
+        "K": "#f01505",
+        "N": "#00ff00",
+        "Q": "#00ff00",
+        "D": "#c000c0",
+        "E": "#c000c0",
+        "C": "#f08080",
+        "G": "#f09040",
+        "P": "#ffff00",
+        "H": "#15a4a4",
+        "Y": "#15a4a4",
+        "S": "#15a400",
+        "T": "#15a400",
     }
 
     styled_html = "<div style='font-family: monospace; font-size: 15px; word-break: break-all; line-height: 2.0; background-color: #222; padding: 14px; border-radius: 6px; letter-spacing: 1px;'>"
-    
+
     for aa in seq:
         bg = bg_colors.get(aa, "#ffffff")
-        text_color = "#ffffff" if aa in ['R', 'K', 'S', 'T', 'D', 'E'] else "#000000"
-        
-        styled_html += (
-            f"<span style='background-color: {bg}; color: {text_color}; "
-            f"font-weight: bold; padding: 2px 5px; margin: 1px 0px; "
-            f"display: inline-block; text-align: center; border-radius: 2px;'>{aa}</span>"
+        text_color = (
+            "#ffffff" if aa in ["R", "K", "S", "T", "D", "E"] else "#000000"
         )
-        
+        styled_html += f"<span style='background-color: {bg}; color: {text_color}; font-weight: bold; padding: 2px 5px; margin: 1px 0px; display: inline-block; text-align: center; border-radius: 2px;'>{aa}</span>"
+
     styled_html += "</div>"
     return styled_html
 
-st.set_page_config(
-    page_title="Bioinformatics Sequence Pipeline", layout="wide"
-)
+
 inject_custom_ui_theme()
 
-st.markdown("""<style>
+st.markdown(
+    """<style>
 .header-container {
 display: flex;
 flex-direction: row;
@@ -623,7 +721,6 @@ animation: titleTextGlow 4s ease-in-out infinite;
 display: inline-block;
 }
 
-/* NEW SLIGHTLY SMALLER SVG ANIMATION STYLING */
 .central-dogma-anim-vertical {
 position: absolute;
 top: -10px;
@@ -678,21 +775,15 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 <div style="flex-shrink: 0; text-align: right;">
 <svg class="central-dogma-anim-vertical" viewBox="0 0 120 400" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs>
-<!-- Single Unified Gradient for the entire vertical structure -->
 <linearGradient id="unifiedGrad" x1="0" y1="0" x2="0" y2="400" gradientUnits="userSpaceOnUse">
 <stop offset="0%" stop-color="#38bdf8"/>
 <stop offset="50%" stop-color="#818cf8"/>
 <stop offset="100%" stop-color="#c084fc"/>
 </linearGradient>
 </defs>
-
-<!-- 1. DISTINCT DNA DOUBLE HELIX -->
 <g class="dna-layer">
-<!-- Intersecting Double Helix Paths -->
 <path d="M 40 30 C 40 55, 80 65, 80 90 C 80 115, 40 125, 40 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round"/>
 <path d="M 80 30 C 80 55, 40 65, 40 90 C 40 115, 80 125, 80 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
-
-<!-- Connecting Base Pairs (Rungs) -->
 <line x1="42" y1="30" x2="78" y2="30" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 <line x1="50" y1="45" x2="70" y2="45" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 <line x1="65" y1="75" x2="55" y2="75" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
@@ -701,32 +792,20 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 <line x1="50" y1="135" x2="70" y2="135" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 <line x1="42" y1="150" x2="78" y2="150" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 </g>
-
-<!-- TRANSCRIPTION ARROW -->
 <g class="process-arrow">
 <line x1="60" y1="158" x2="60" y2="178" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
 <polygon points="55,174 65,174 60,182" fill="url(#unifiedGrad)"/>
 </g>
-
-<!-- 2. DISTINCT RNA SINGLE STRAND WITH SOLID BACKBONE -->
 <g class="rna-strand">
-<!-- Solid Wavy Single Backbone -->
 <path d="M 50 195 C 75 220, 45 260, 70 285" stroke="url(#unifiedGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
 </g>
-
-<!-- TRANSLATION ARROW -->
 <g class="process-arrow">
 <line x1="60" y1="298" x2="60" y2="318" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
 <polygon points="55,314 65,314 60,322" fill="url(#unifiedGrad)"/>
 </g>
-
-<!-- 3. DISTINCT FOLDED PROTEIN POLYPEPTIDE CHAIN -->
 <g class="protein-cluster">
-<!-- Tangled Polypeptide Backbone Connectors -->
 <path d="M 40 345 L 60 335 L 80 345 L 70 365 L 50 365 Z" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" stroke-linejoin="round"/>
 <path d="M 60 335 L 50 365" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" opacity="0.6"/>
-
-<!-- Amino Acid Spheres -->
 <circle cx="40" cy="345" r="9" fill="url(#unifiedGrad)"/>
 <circle cx="60" cy="335" r="9" fill="url(#unifiedGrad)"/>
 <circle cx="80" cy="345" r="9" fill="url(#unifiedGrad)"/>
@@ -735,24 +814,22 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 </g>
 </svg>
 </div>
-</div>""", unsafe_allow_html=True)
+</div>""",
+    unsafe_allow_html=True,
+)
+
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
     "NCBI Entrez Email", value="your.email@example.com"
 )
 Entrez.email = user_email
 
-
-# --- SECTION 1: INPUT SEQUENCE ---
 st.header("Input Sequence")
-
-# Normal plain text label
 st.markdown(
     "<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>",
     unsafe_allow_html=True,
 )
 
-# Radio options with hidden internal label
 input_option = st.radio(
     "Choose Input Method:",
     options=["Raw Sequence / Accession ID", "Upload FASTA File"],
@@ -760,10 +837,8 @@ input_option = st.radio(
     label_visibility="collapsed",
 )
 
-
 raw_input = ""
 uploaded_file = None
-
 
 if input_option == "Raw Sequence / Accession ID":
     raw_input = st.text_area(
@@ -828,6 +903,55 @@ if st.button("Run Pipeline", type="primary"):
                     "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
                 )
 
+            # --- ORF VIEWER INTEGRATION ---
+            st.header("Open Reading Frame (ORF) Viewer")
+            if seq_type in ["DNA", "RNA"]:
+                dna_for_orf = sequence.replace("U", "T")
+                min_len = st.slider(
+                    "Minimum ORF Length (Amino Acids)",
+                    min_value=10,
+                    max_value=150,
+                    value=30,
+                    step=5,
+                )
+
+                with st.spinner("Scanning 6 reading frames for ORFs..."):
+                    orf_list = find_orfs(
+                        dna_for_orf, min_protein_length=min_len
+                    )
+
+                if orf_list:
+                    df_orfs = pd.DataFrame(orf_list)
+                    st.dataframe(
+                        df_orfs.drop(columns=["Protein Sequence"]),
+                        use_container_width=True,
+                    )
+
+                    selected_orf_idx = st.selectbox(
+                        "Select ORF to inspect sequence details:",
+                        options=df_orfs.index,
+                        format_func=lambda x: f"ORF {x+1} | Strand: {df_orfs.loc[x, 'Strand']} | Frame: {df_orfs.loc[x, 'Frame']} | Length: {df_orfs.loc[x, 'Length (aa)']} aa",
+                    )
+
+                    chosen_protein = df_orfs.loc[
+                        selected_orf_idx, "Protein Sequence"
+                    ]
+                    st.subheader(
+                        f"Selected ORF #{selected_orf_idx+1} Translation"
+                    )
+                    st.markdown(
+                        color_protein_sequence_block(chosen_protein),
+                        unsafe_allow_html=True,
+                    )
+                else:
+                    st.info(
+                        "No Open Reading Frames found meeting the minimum length criteria."
+                    )
+            else:
+                st.info(
+                    "ORF scanning is available for DNA and RNA input sequence types."
+                )
+
             st.header("Protein Analysis")
             col_a, col_b = st.columns(2)
 
@@ -850,7 +974,6 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            
             st.header("Protein Structure Visualization")
 
             engine = st.radio(
@@ -871,16 +994,15 @@ if st.button("Run Pipeline", type="primary"):
                         "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to shorter sequences."
                     )
                 else:
-                    with st.spinner("Predicting 3D structure using ESMFold..."):
+                    with st.spinner(
+                        "Predicting 3D structure using ESMFold..."
+                    ):
                         pdb_data = predict_structure_esm(protein_seq)
             else:
                 with st.spinner(
                     "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
                 ):
-                    # Replace URL below with your active ngrok/Modal endpoint
-                    COLABFOLD_API = (
-                        "https://banshee-remedy-oblong.ngrok-free.dev/"
-                    )
+                    COLABFOLD_API = "https://banshee-remedy-oblong.ngrok-free.dev/"
                     pdb_data = predict_structure_colabfold(
                         protein_seq, api_url=COLABFOLD_API
                     )
