@@ -25,7 +25,7 @@ AA_NAMES = {
 }
 
 def inject_custom_ui_theme():
-    """Injects a deep black breathing background, glassmorphism UI, and side-by-side radio cards."""
+    """Injects dynamic breathing background, glassmorphism UI, and equal-sized side-by-side radio cards."""
     css = """
     <style>
     /* 1. Base Deep Black Background */
@@ -42,7 +42,7 @@ def inject_custom_ui_theme():
         color: #f8fafc;
     }
 
-    /* 2. Customizable Blurry Light Zone */
+    /* 2. Dynamic Blurry Light Zone */
     @keyframes lightSweep {
         0% { opacity: 0.2; transform: scale(1); }
         50% { opacity: 0.6; transform: scale(1.15); }
@@ -74,7 +74,7 @@ def inject_custom_ui_theme():
         z-index: 1;
     }
 
-    /* 3. Glassmorphism containers */
+    /* 3. Glassmorphism Containers */
     div[data-testid="stExpander"], div[data-testid="stMetric"] {
         background: rgba(255, 255, 255, 0.02) !important;
         backdrop-filter: blur(12px);
@@ -112,7 +112,7 @@ def inject_custom_ui_theme():
         box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
     }
 
-    /* Sidebar */
+    /* Sidebar Styling */
     section[data-testid="stSidebar"] {
         background-color: rgba(10, 10, 12, 0.85) !important;
         backdrop-filter: blur(16px);
@@ -124,25 +124,28 @@ def inject_custom_ui_theme():
         background: transparent !important;
     }
 
-    /* --- SIDE-BY-SIDE SELECTABLE GLASS CARDS FOR RADIO OPTIONS ONLY --- */
+    /* 4. Side-by-Side Selectable Glass Cards (Equal Dimensions) */
     div[data-testid="stRadio"] div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
         gap: 16px !important;
         width: 100% !important;
+        align-items: stretch !important;
     }
 
     div[data-testid="stRadio"] div[role="radiogroup"] label {
-        flex: 1 !important;
+        flex: 1 1 0px !important;
+        min-height: 72px !important;
         background: rgba(255, 255, 255, 0.03) !important;
         backdrop-filter: blur(10px) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 10px !important;
-        padding: 14px 20px !important;
+        padding: 12px 20px !important;
         transition: all 0.3s ease !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
+        justify-content: flex-start !important;
     }
 
     /* Card Hover State */
