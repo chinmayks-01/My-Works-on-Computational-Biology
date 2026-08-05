@@ -596,7 +596,9 @@ def color_protein_sequence_block(seq: str) -> str:
     styled_html += "</div>"
     return styled_html
 
-st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
+st.set_page_config(
+    page_title="Bioinformatics Sequence Pipeline", layout="wide"
+)
 inject_custom_ui_theme()
 
 st.markdown(
@@ -623,10 +625,12 @@ st.markdown(
         </span> 🧙‍♂️
     </h1>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 st.sidebar.header("Settings")
-user_email = st.sidebar.text_input("NCBI Entrez Email", value="your.email@example.com")
+user_email = st.sidebar.text_input(
+    "NCBI Entrez Email", value="your.email@example.com"
+)
 Entrez.email = user_email
 
 
@@ -634,14 +638,17 @@ Entrez.email = user_email
 st.header("1. Input Sequence")
 
 # Normal plain text label
-st.markdown("<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>", unsafe_allow_html=True)
+st.markdown(
+    "<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>",
+    unsafe_allow_html=True,
+)
 
 # Radio options with hidden internal label
 input_option = st.radio(
     "Choose Input Method:",
     options=["Raw Sequence / Accession ID", "Upload FASTA File"],
     horizontal=True,
-    label_visibility="collapsed"
+    label_visibility="collapsed",
 )
 
 # Initialize variables
@@ -654,33 +661,37 @@ if input_option == "Raw Sequence / Accession ID":
         "Enter Sequence or Accession ID:",
         value="",
         placeholder="e.g., NM_000518 or ATGCG...",
-        height=140
+        height=140,
     )
 else:
     uploaded_file = st.file_uploader(
-        "Upload FASTA file", 
-        type=["fasta", "fas", "fa"]
+        "Upload FASTA file", type=["fasta", "fas", "fa"]
     )
+
 if st.button("Run Pipeline", type="primary"):
     with st.spinner("Processing input sequence..."):
         sequence = fetch_sequence(raw_input, uploaded_file)
-        
+
     if not sequence:
-        st.error("No valid sequence input detected. Please provide a sequence, accession ID, or FASTA file.")
+        st.error(
+            "No valid sequence input detected. Please provide a sequence, accession ID, or FASTA file."
+        )
     else:
         st.success("Sequence successfully loaded!")
-        
-       
+
         st.header("2. Identification & BLAST Analysis")
         with st.spinner("Analyzing sequence type and querying BLAST..."):
             seq_type, gc_content, gene_matches = identify_sequence(sequence)
-        
+
         if seq_type:
             col1, col2, col3 = st.columns(3)
             col1.metric("Sequence Type", seq_type)
-            col2.metric("GC Content", f"{gc_content:.2f}%" if gc_content is not None else "N/A")
+            col2.metric(
+                "GC Content",
+                f"{gc_content:.2f}%" if gc_content is not None else "N/A",
+            )
             col3.metric("Sequence Length", f"{len(sequence)} bp/aa")
-            
+
             st.subheader("Top 5 Gene Matches (NCBI BLAST)")
             if gene_matches:
                 df_matches = pd.DataFrame(gene_matches)
@@ -688,22 +699,29 @@ if st.button("Run Pipeline", type="primary"):
             else:
                 st.info("No significant BLAST hits found.")
 
-           
             st.header("3. Transcription & Translation")
-            transcript, protein_seq = central_dogma_pipeline(sequence, seq_type)
-            
+            transcript, protein_seq = central_dogma_pipeline(
+                sequence, seq_type
+            )
+
             if transcript:
                 with st.expander("View mRNA Transcript"):
                     st.text_area("RNA Sequence", transcript, height=100)
-            
-            with st.expander("View Translated Protein Sequence", expanded=True):
-                st.markdown(color_protein_sequence_block(protein_seq), unsafe_allow_html=True)
-                st.caption("🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline")
 
-            
+            with st.expander(
+                "View Translated Protein Sequence", expanded=True
+            ):
+                st.markdown(
+                    color_protein_sequence_block(protein_seq),
+                    unsafe_allow_html=True,
+                )
+                st.caption(
+                    "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
+                )
+
             st.header("4. Protein Analysis")
             col_a, col_b = st.columns(2)
-            
+
             with col_a:
                 st.subheader("Top 10 Amino Acids Frequency")
                 df_aa = analyze_amino_acids(protein_seq)
@@ -717,58 +735,64 @@ if st.button("Run Pipeline", type="primary"):
                 with st.spinner("Searching RCSB PDB..."):
                     matches = fetch_pdb_similar(protein_seq)
                 if matches:
-                    st.dataframe(pd.DataFrame(matches), use_container_width=True)
+                    st.dataframe(
+                        pd.DataFrame(matches), use_container_width=True
+                    )
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            
+            # --- SECTION 5: PROTEIN STRUCTURE VISUALIZATION ---
             st.header("5. Protein Structure Visualization")
+
             engine = st.radio(
                 "Select Prediction Engine:",
                 options=[
                     "ESMFold (Ultra-Fast | <400 aa)",
-        "ColabFold / AlphaFold2 (High-Accuracy | Up to 1200 aa)",
-    ],
-    horizontal=True,
-)
+                    "ColabFold / AlphaFold2 (High-Accuracy | Up to 1200 aa)",
+                ],
+                horizontal=True,
+                key="structure_prediction_engine",
+            )
 
-pdb_data = None
+            pdb_data = None
 
-if "ESMFold" in engine:
-    if len(protein_seq) > 400:
-        st.warning(
-            "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to shorter sequences."
-        )
-    else:
-        with st.spinner("Predicting 3D structure using ESMFold..."):
-            pdb_data = predict_structure_esm(protein_seq)
-else:
-    with st.spinner(
-        "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
-    ):
-        # Update this with your active ColabFold GPU endpoint URL
-        COLABFOLD_API = "https://your-backend-endpoint.ngrok-free.app"
-        pdb_data = predict_structure_colabfold(
-            protein_seq, api_url=COLABFOLD_API
-        )
+            if "ESMFold" in engine:
+                if len(protein_seq) > 400:
+                    st.warning(
+                        "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to shorter sequences."
+                    )
+                else:
+                    with st.spinner("Predicting 3D structure using ESMFold..."):
+                        pdb_data = predict_structure_esm(protein_seq)
+            else:
+                with st.spinner(
+                    "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
+                ):
+                    # Replace URL below with your active ngrok/Modal endpoint
+                    COLABFOLD_API = (
+                        "https://your-backend-endpoint.ngrok-free.app"
+                    )
+                    pdb_data = predict_structure_colabfold(
+                        protein_seq, api_url=COLABFOLD_API
+                    )
 
-# Render viewer and download button
-if pdb_data:
-    st.success("3D Structure predicted successfully!")
+            if pdb_data:
+                st.success("3D Structure predicted successfully!")
 
-    st.subheader("Interactive 3D Structure Viewer")
-    render_protein_3d_viewer(pdb_input=pdb_data, is_pdb_id=False, height=500)
+                st.subheader("Interactive 3D Structure Viewer")
+                render_protein_3d_viewer(
+                    pdb_input=pdb_data, is_pdb_id=False, height=500
+                )
 
-    st.download_button(
-        label="Download PDB File",
-        data=pdb_data,
-        file_name="predicted_structure.pdb",
-        mime="chemical/x-pdb",
-    )
-elif "ESMFold" in engine and len(protein_seq) <= 400:
-    st.error("Failed to predict 3D structure using ESMFold API.")
-elif "ColabFold" in engine:
-    st.error(
-        "Failed to predict 3D structure using ColabFold API. Check backend connection."
-    )
-                
+                st.download_button(
+                    label="Download PDB File",
+                    data=pdb_data,
+                    file_name="predicted_structure.pdb",
+                    mime="chemical/x-pdb",
+                )
+            elif "ESMFold" in engine and len(protein_seq) <= 400:
+                st.error("Failed to predict 3D structure using ESMFold API.")
+            elif "ColabFold" in engine:
+                st.error(
+                    "Failed to predict 3D structure using ColabFold API. Check backend connection."
+                )
