@@ -877,40 +877,34 @@ if st.button("Run Pipeline", type="primary"):
             
             st.header("Protein Structure Visualization")
 
-            engine = st.radio(
-                "Select Prediction Engine:",
-                options=[
-                    "ESMFold (Ultra-Fast | <400 aa)",
-                    "ColabFold / AlphaFold2 (High-Accuracy | Up to 1200 aa)",
-                ],
-                horizontal=True,
-                key="structure_prediction_engine",
-            )
-
             pdb_data = None
-
-            if "ESMFold" in engine:
-                if len(protein_seq) > 400:
-                    st.warning(
-                        "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to shorter sequences."
-                    )
+            used_engine = ""
+            
+            # AUTOMATIC STRUCTURE PREDICTION ROUTING
+            if len(protein_seq) <= 400:
+                st.info(f"Sequence length is **{len(protein_seq)} aa**. Automatically using **ESMFold** for ultra-fast prediction...")
+                with st.spinner("Predicting 3D structure using ESMFold..."):
+                    pdb_data = predict_structure_esm(protein_seq)
+                    
+                if pdb_data:
+                    used_engine = "ESMFold API"
                 else:
-                    with st.spinner("Predicting 3D structure using ESMFold..."):
-                        pdb_data = predict_structure_esm(protein_seq)
+                    st.warning("ESMFold API failed or returned an empty response. Falling back to ColabFold...")
+                    with st.spinner("Generating MSAs and predicting structure using ColabFold (1–3 mins)..."):
+                        COLABFOLD_API = "https://your-backend-endpoint.ngrok-free.app"
+                        pdb_data = predict_structure_colabfold(protein_seq, api_url=COLABFOLD_API)
+                        if pdb_data:
+                            used_engine = "ColabFold/AlphaFold2"
             else:
-                with st.spinner(
-                    "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
-                ):
-                    # Replace URL below with your active ngrok/Modal endpoint
-                    COLABFOLD_API = (
-                        "https://your-backend-endpoint.ngrok-free.app"
-                    )
-                    pdb_data = predict_structure_colabfold(
-                        protein_seq, api_url=COLABFOLD_API
-                    )
+                st.info(f"Sequence length (**{len(protein_seq)} aa**) exceeds ESMFold's 400 aa limit. Automatically shifting to **ColabFold / AlphaFold2**...")
+                with st.spinner("Generating MSAs and predicting structure using ColabFold (1–3 mins)..."):
+                    COLABFOLD_API = "https://your-backend-endpoint.ngrok-free.app"
+                    pdb_data = predict_structure_colabfold(protein_seq, api_url=COLABFOLD_API)
+                    if pdb_data:
+                        used_engine = "ColabFold/AlphaFold2"
 
             if pdb_data:
-                st.success("3D Structure predicted successfully!")
+                st.success(f"3D Structure predicted successfully using **{used_engine}**!")
                 auto_scroll()
 
                 st.subheader("Interactive 3D Structure Viewer")
@@ -924,9 +918,5 @@ if st.button("Run Pipeline", type="primary"):
                     file_name="predicted_structure.pdb",
                     mime="chemical/x-pdb",
                 )
-            elif "ESMFold" in engine and len(protein_seq) <= 400:
-                st.error("Failed to predict 3D structure using ESMFold API.")
-            elif "ColabFold" in engine:
-                st.error(
-                    "Failed to predict 3D structure using ColabFold API. Check backend connection."
-                )
+            else:
+                st.error("Failed to predict 3D structure. Please verify the sequence validity and backend connection.")
