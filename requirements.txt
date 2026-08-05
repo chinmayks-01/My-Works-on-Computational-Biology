@@ -1,7 +1,7 @@
-streamlit
+streamlit>=1.38.0
 biopython
 requests
 pandas
 py3Dmol
 stmol
-ipython_genutils
+starlette<0.38.0
