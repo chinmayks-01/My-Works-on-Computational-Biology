@@ -210,15 +210,15 @@ def color_protein_sequence_block(seq: str) -> str:
     """Renders sequence with solid colored background blocks matching standard MSA/Clustal tools."""
     
     bg_colors = {
-        'A': '#80a0f0', 'I': '#80a0f0', 'L': '#80a0f0', 'M': '#80a0f0', 'F': '#80a0f0', 'W': '#80a0f0', 'V': '#80a0f0', # Blue: Hydrophobic
-        'R': '#f01505', 'K': '#f01505',                                                                               # Red: Basic / Positive
-        'N': '#00ff00', 'Q': '#00ff00',                                                                               # Green: Polar
-        'D': '#c000c0', 'E': '#c000c0',                                                                               # Pink/Magenta: Acidic / Negative
-        'C': '#f08080',                                                                                               # Pink-Red: Cysteine
-        'G': '#f09040',                                                                                               # Orange: Glycine
-        'P': '#ffff00',                                                                                               # Yellow: Proline
-        'H': '#15a4a4', 'Y': '#15a4a4',                                                                               # Cyan: Aromatic
-        'S': '#15a400', 'T': '#15a400'                                                                                # Dark Green: Hydroxylated
+        'A': '#80a0f0', 'I': '#80a0f0', 'L': '#80a0f0', 'M': '#80a0f0', 'F': '#80a0f0', 'W': '#80a0f0', 'V': '#80a0f0', 
+        'R': '#f01505', 'K': '#f01505',                                                                               
+        'N': '#00ff00', 'Q': '#00ff00',                                                                               
+        'D': '#c000c0', 'E': '#c000c0',                                                                               
+        'C': '#f08080',                                                                                               
+        'G': '#f09040',                                                                                               
+        'P': '#ffff00',                                                                                              
+        'H': '#15a4a4', 'Y': '#15a4a4',                                                                               
+        'S': '#15a400', 'T': '#15a400'                                                                                
     }
 
     styled_html = "<div style='font-family: monospace; font-size: 15px; word-break: break-all; line-height: 2.0; background-color: #222; padding: 14px; border-radius: 6px; letter-spacing: 1px;'>"
