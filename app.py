@@ -25,10 +25,10 @@ AA_NAMES = {
 }
 
 def inject_custom_ui_theme():
-    """Injects dynamic background breathing animation, glassmorphism UI, and a blurry diagonal light sweep."""
+    """Injects a deep black breathing background, glassmorphism UI, and a blurry light sweep."""
     css = """
     <style>
-    /* 1. Base Breathing Gradient */
+    /* 1. Base Black Breathing Background */
     @keyframes breathingGradient {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
@@ -36,48 +36,47 @@ def inject_custom_ui_theme():
     }
 
     .stApp {
-        background: linear-gradient(-45deg, #090d16, #111827, #1e1b4b, #0f2b46, #090d16);
+        background: linear-gradient(-45deg, #000000, #0a0a0c, #050811, #000000);
         background-size: 400% 400%;
         animation: breathingGradient 18s ease infinite;
         color: #f8fafc;
     }
 
-    /* 2. Blurry Diagonal Light Streak (The Aesthetic Sweep) */
+    /* 2. Blurry Diagonal Light Streak (Cyan/Blue Sweep) */
     @keyframes lightSweep {
-        0% { background-position: 0% 0%; opacity: 0.2; transform: scale(1); }
-        50% { opacity: 0.7; transform: scale(1.05); }
-        100% { background-position: 100% 100%; opacity: 0.2; transform: scale(1); }
+        0% { background-position: 0% 0%; opacity: 0.15; transform: scale(1); }
+        50% { opacity: 0.5; transform: scale(1.05); }
+        100% { background-position: 100% 100%; opacity: 0.15; transform: scale(1); }
     }
 
     .stApp::after {
         content: "";
-        position: fixed; /* Keeps the light in the viewport as you scroll */
+        position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
-        /* Diagonal gradient creating the light band */
         background: linear-gradient(
             115deg, 
-            transparent 20%, 
-            rgba(99, 102, 241, 0.08) 40%, /* Indigo glow */
-            rgba(56, 189, 248, 0.15) 50%, /* Bright blue center */
-            rgba(168, 85, 247, 0.08) 60%, /* Purple glow */
-            transparent 80%
+            transparent 25%, 
+            rgba(56, 189, 248, 0.08) 45%, /* Soft cyan glow */
+            rgba(37, 99, 235, 0.12) 50%,  /* Deep blue center */
+            rgba(56, 189, 248, 0.08) 55%, 
+            transparent 75%
         );
         background-size: 200% 200%;
-        filter: blur(70px); /* Makes it a soft, aesthetic haze */
-        pointer-events: none; /* ESSENTIAL: Lets you click through the light layer */
+        filter: blur(70px);
+        pointer-events: none;
         z-index: 0;
         animation: lightSweep 12s ease-in-out infinite alternate;
     }
 
-    /* Elevate the main content above the light sweep */
+    /* Elevate content above the background effect */
     .block-container {
         position: relative;
         z-index: 1;
     }
 
-    /* 3. Glassmorphism containers for cards, metrics, and expanders */
+    /* 3. Glassmorphism containers */
     div[data-testid="stExpander"], div[data-testid="stMetric"] {
-        background: rgba(255, 255, 255, 0.03) !important;
+        background: rgba(255, 255, 255, 0.02) !important;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -96,7 +95,7 @@ def inject_custom_ui_theme():
 
     /* Primary Interactive Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%) !important;
+        background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
         color: #ffffff !important;
         border: none !important;
         border-radius: 8px !important;
@@ -115,13 +114,12 @@ def inject_custom_ui_theme():
 
     /* Glassmorphism Sidebar */
     section[data-testid="stSidebar"] {
-        background-color: rgba(15, 23, 42, 0.75) !important;
+        background-color: rgba(10, 10, 12, 0.85) !important;
         backdrop-filter: blur(16px);
         border-right: 1px solid rgba(255, 255, 255, 0.08);
         z-index: 10;
     }
     
-    /* Make the header transparent so it blends with the dark theme */
     header[data-testid="stHeader"] {
         background: transparent !important;
     }
