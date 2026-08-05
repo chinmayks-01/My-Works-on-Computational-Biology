@@ -205,14 +205,7 @@ def auto_scroll():
 def render_protein_3d_viewer(
     pdb_input: str, is_pdb_id: bool = True, height: int = 480
 ):
-    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js.
-
-    Parameters:
-    - pdb_input: PDB ID string (e.g. '1A2C') OR raw PDB file contents.
-    - is_pdb_id: True if passing a 4-letter PDB ID, False if passing raw PDB string (e.g., from ESMFold).
-    - height: Height of the canvas in pixels.
-    """
-    # Sanitize string input for JavaScript injection if raw PDB data is passed
+    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js."""
     if is_pdb_id:
         fetch_js = f"v.addModelAsPdbId('{pdb_input.strip()}');"
     else:
@@ -633,10 +626,6 @@ def color_protein_sequence_block(seq: str) -> str:
     styled_html += "</div>"
     return styled_html
 
-import streamlit as st
-
-import streamlit as st
-
 st.set_page_config(
     page_title="Bioinformatics Sequence Pipeline", layout="wide"
 )
@@ -922,7 +911,7 @@ if st.button("Run Pipeline", type="primary"):
             else:
                 st.info(f"Sequence length (**{len(protein_seq)} aa**) exceeds ESMFold's 400 aa limit. Automatically shifting to **ColabFold / AlphaFold2**...")
                 with st.spinner("Generating MSAs and predicting structure using ColabFold (1–3 mins)..."):
-                    COLABFOLD_API = "https://banshee-remedy-oblong.ngrok-free.dev/"
+                    COLABFOLD_API = "https://your-backend-endpoint.ngrok-free.app"
                     pdb_data = predict_structure_colabfold(protein_seq, api_url=COLABFOLD_API)
                     if pdb_data:
                         used_engine = "ColabFold/AlphaFold2"
