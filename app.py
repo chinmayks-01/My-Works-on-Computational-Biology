@@ -6,7 +6,7 @@ import xml.etree.ElementTree as ET
 from collections import Counter
 import streamlit as st
 import py3Dmol
-from stmol import showmol
+
 from Bio import Entrez, SeqIO
 from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
