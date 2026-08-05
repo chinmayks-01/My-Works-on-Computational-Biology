@@ -537,11 +537,15 @@ def analyze_amino_acids(protein_seq: str):
 
 
 def predict_structure_esm(protein_seq: str):
+    """Sends sequence to the official ESMFold API endpoint."""
     url = "https://api.esmatlas.com/foldSequence/v1/pdb/"
     res = requests.post(
-        url, data=protein_seq, headers={"Content-Type": "text/plain"}
+        url, data=protein_seq.strip(), headers={"Content-Type": "text/plain"}
     )
-    return res.text if res.status_code == 200 else None
+    if res.status_code == 200:
+        return res.text
+    else:
+        return None
 
 
 def color_protein_sequence_block(seq: str) -> str:
@@ -786,7 +790,6 @@ if st.button("Run Pipeline", type="primary"):
                     "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
                 )
 
-            # --- ORF DIAGRAM MAP & DIRECT SEQUENCE VIEWER ---
             st.header("Open Reading Frame (ORF) Diagram Map & Sequences")
             if seq_type in ["DNA", "RNA"]:
                 dna_for_orf = sequence.replace("U", "T")
@@ -848,40 +851,19 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
+            # --- PROTEIN STRUCTURE VISUALIZATION (ESMFold Integrated) ---
             st.header("Protein Structure Visualization")
 
-            engine = st.radio(
-                "Select Prediction Engine:",
-                options=[
-                    "ESMFold (Ultra-Fast | <400 aa)",
-                    "ColabFold / AlphaFold2 (High-Accuracy | Up to 1200 aa)",
-                ],
-                horizontal=True,
-                key="structure_prediction_engine",
-            )
-
             pdb_data = None
-
-            if "ESMFold" in engine:
-                if len(protein_seq) > 400:
-                    st.warning(
-                        "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to shorter sequences."
-                    )
-                else:
-                    with st.spinner(
-                        "Predicting 3D structure using ESMFold..."
-                    ):
-                        pdb_data = predict_structure_esm(protein_seq)
+            if len(protein_seq) > 400:
+                st.warning(
+                    "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to sequences shorter than 400 residues."
+                )
             else:
                 with st.spinner(
-                    "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
+                    "Predicting 3D structure using ESMFold API..."
                 ):
-                    COLABFOLD_API = (
-                        "https://banshee-remedy-oblong.ngrok-free.dev/"
-                    )
-                    pdb_data = predict_structure_colabfold(
-                        protein_seq, api_url=COLABFOLD_API
-                    )
+                    pdb_data = predict_structure_esm(protein_seq)
 
             if pdb_data:
                 st.success("3D Structure predicted successfully!")
@@ -897,9 +879,5 @@ if st.button("Run Pipeline", type="primary"):
                     file_name="predicted_structure.pdb",
                     mime="chemical/x-pdb",
                 )
-            elif "ESMFold" in engine and len(protein_seq) <= 400:
+            elif len(protein_seq) <= 400:
                 st.error("Failed to predict 3D structure using ESMFold API.")
-            elif "ColabFold" in engine:
-                st.error(
-                    "Failed to predict 3D structure using ColabFold API. Check backend connection."
-                )
