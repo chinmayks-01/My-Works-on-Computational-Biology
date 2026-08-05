@@ -603,26 +603,23 @@ st.set_page_config(
     page_title="Bioinformatics Sequence Pipeline", layout="wide"
 )
 
-# inject_custom_ui_theme() # Uncomment if you have this function defined in your script
+# inject_custom_ui_theme()
 
-st.markdown("""<style>
-/* Layout for the header */
+# Notice how the HTML starts entirely flush to the left edge!
+html_content = """<style>
 .header-container {
     display: flex;
     flex-direction: row;
     justify-content: space-between;
-    align-items: flex-start; /* Aligns title to the top so the vertical animation can drop down */
+    align-items: flex-start; 
     width: 100%;
     margin-bottom: 1.5rem;
 }
-
-/* Title Glow Animation */
 @keyframes titleTextGlow {
     0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
     50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
     100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
 }
-
 .title-glow-text {
     background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
     -webkit-background-clip: text;
@@ -630,41 +627,32 @@ st.markdown("""<style>
     animation: titleTextGlow 4s ease-in-out infinite;
     display: inline-block;
 }
-
-/* Vertical SVG Canvas Container */
 .central-dogma-anim-vertical {
     width: 90px;
-    height: 280px; /* Scaled down slightly for a minimalist UI footprint */
+    height: 280px;
     overflow: visible;
 }
-
-/* Specific SVG Animations */
 @keyframes pulseGlow {
     0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 3px #38bdf8); }
     50% { opacity: 1; filter: drop-shadow(0 0 8px #c084fc); }
 }
-
 @keyframes rnaFlowVertical {
     0% { stroke-dashoffset: 40; }
     100% { stroke-dashoffset: 0; }
 }
-
 @keyframes globularPulse {
     0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px #c084fc); }
     50% { transform: scale(1.04); filter: drop-shadow(0 0 8px #fb7185); }
 }
-
 .dna-glow {
     animation: pulseGlow 4s ease-in-out infinite;
 }
-
 .rna-flow-v {
     stroke-dasharray: 6 4;
     animation: rnaFlowVertical 2s linear infinite;
 }
-
 .globular-protein {
-    transform-origin: 50px 290px; /* Center point of the protein on the vertical axis */
+    transform-origin: 50px 290px; 
     animation: globularPulse 3s ease-in-out infinite;
 }
 </style>
@@ -679,7 +667,6 @@ st.markdown("""<style>
     <div style="flex-shrink: 0; text-align: right; margin-right: 20px;">
         <svg class="central-dogma-anim-vertical" viewBox="0 0 100 360" fill="none" xmlns="http://www.w3.org/2000/svg">
             <defs>
-                <!-- Vertical Gradients -->
                 <linearGradient id="dnaGradV" x1="0" y1="10" x2="0" y2="140" gradientUnits="userSpaceOnUse">
                     <stop offset="0%" stop-color="#38bdf8"/>
                     <stop offset="100%" stop-color="#818cf8"/>
@@ -694,9 +681,7 @@ st.markdown("""<style>
                 </linearGradient>
             </defs>
 
-            <!-- 1. TRUE VERTICAL DNA HELIX -->
             <g class="dna-glow">
-                <!-- Base pairs mapped vertically -->
                 <line x1="38" y1="22" x2="62" y2="22" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
                 <line x1="38" y1="39" x2="62" y2="39" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
                 <line x1="38" y1="56" x2="62" y2="56" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
@@ -704,41 +689,28 @@ st.markdown("""<style>
                 <line x1="38" y1="90" x2="62" y2="90" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
                 <line x1="38" y1="107" x2="62" y2="107" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
                 <line x1="38" y1="124" x2="62" y2="124" stroke="#a78bfa" stroke-width="1.8" opacity="0.8"/>
-
-                <!-- Strand 1 -->
                 <path d="M 50 15 C 30 20, 30 32, 50 39 C 70 46, 70 58, 50 65 C 30 72, 30 84, 50 91 C 70 98, 70 110, 50 117 C 30 124, 30 133, 50 138" stroke="url(#dnaGradV)" stroke-width="3" stroke-linecap="round" fill="none"/>
-                <!-- Strand 2 (Interleaved) -->
                 <path d="M 50 15 C 70 20, 70 32, 50 39 C 30 46, 30 58, 50 65 C 70 72, 70 84, 50 91 C 30 98, 30 110, 50 117 C 70 124, 70 133, 50 138" stroke="url(#dnaGradV)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.75"/>
             </g>
 
-            <!-- TRANSITION 1: DNA -> mRNA -->
             <path d="M 50 141 L 50 150" stroke="url(#dnaGradV)" stroke-width="2" stroke-dasharray="3 2" opacity="0.6"/>
 
-            <!-- 2. VERTICAL mRNA WITH CODON NODES -->
             <g>
                 <path class="rna-flow-v" d="M 50 151 C 34 162, 66 175, 50 190 C 38 200, 60 212, 50 222" stroke="url(#mrnaGradV)" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-                
                 <line x1="42" y1="163" x2="34" y2="163" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round"/>
                 <circle cx="33" cy="163" r="2.2" fill="#38bdf8"/>
-                
                 <line x1="58" y1="180" x2="66" y2="180" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round"/>
                 <circle cx="67" cy="180" r="2.2" fill="#c084fc"/>
-                
                 <line x1="44" y1="198" x2="36" y2="198" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/>
                 <circle cx="35" cy="198" r="2.2" fill="#fb7185"/>
-                
                 <line x1="55" y1="214" x2="63" y2="214" stroke="#e879f9" stroke-width="1.8" stroke-linecap="round"/>
                 <circle cx="64" cy="214" r="2.2" fill="#facc15"/>
             </g>
 
-            <!-- TRANSITION 2: mRNA -> PROTEIN -->
             <path d="M 50 223 L 50 232" stroke="url(#mrnaGradV)" stroke-width="2" stroke-dasharray="2 2" opacity="0.6"/>
 
-            <!-- 3. GLOBULAR FOLDED PROTEIN CLUSTER (BOTTOM) -->
             <g class="globular-protein">
-                <!-- Compact Globular Loops / Tertiary Domain mapped vertically -->
                 <path d="M 50 233 C 30 243, 30 268, 50 278 C 70 288, 75 263, 55 253 C 45 248, 38 263, 48 273 C 58 283, 40 298, 50 313 C 60 328, 40 343, 50 353" stroke="url(#proteinGradV)" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-                <!-- Core Amino Acid Residue Clusters -->
                 <circle cx="50" cy="233" r="3.5" fill="#38bdf8"/>
                 <circle cx="36" cy="260" r="4" fill="#a855f7"/>
                 <circle cx="62" cy="270" r="3.5" fill="#e879f9"/>
@@ -748,8 +720,10 @@ st.markdown("""<style>
             </g>
         </svg>
     </div>
-</div>
-""", unsafe_allow_html=True)
+</div>"""
+
+# Render the HTML safely
+st.markdown(html_content, unsafe_allow_html=True)
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
     "NCBI Entrez Email", value="your.email@example.com"
