@@ -290,7 +290,7 @@ if st.button("Run Pipeline", type="primary"):
                 with st.expander("View mRNA Transcript"):
                     st.text_area("RNA Sequence", transcript, height=100)
             
-            ith st.expander("View Translated Protein Sequence", expanded=True):
+            with st.expander("View Translated Protein Sequence", expanded=True):
                 st.markdown(color_protein_sequence_block(protein_seq), unsafe_allow_html=True)
                 st.caption("🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline")
 
