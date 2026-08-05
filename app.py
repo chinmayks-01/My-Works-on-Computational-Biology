@@ -175,19 +175,14 @@ def inject_custom_ui_theme():
     st.markdown(css, unsafe_allow_html=True)
 
 
-def render_protein_3d_viewer(
-    pdb_input: str, is_pdb_id: bool = True, height: int = 480
-):
-    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js."""
-    if is_pdb_id:
-        fetch_js = f"v.addModelAsPdbId('{pdb_input.strip()}');"
-    else:
-        escaped_pdb = (
-            pdb_input.replace("\\", "\\\\")
-            .replace("`", "\\`")
-            .replace("${", "\\${")
-        )
-        fetch_js = f"v.addModel(`{escaped_pdb}`, 'pdb');"
+def render_protein_3d_viewer(pdb_data: str, height: int = 480):
+    """Renders raw PDB/CIF text content safely into 3Dmol.js."""
+    escaped_pdb = (
+        pdb_data.replace("\\", "\\\\")
+        .replace("`", "\\`")
+        .replace("${", "\\${")
+        .replace("\n", "\\n")
+    )
 
     html_code = f"""
     <!DOCTYPE html>
@@ -197,7 +192,7 @@ def render_protein_3d_viewer(
         <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
         <style>
             * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }}
+            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: -apple-system, sans-serif; }}
             .viewer-wrapper {{
                 position: relative; width: 100%; height: {height}px;
                 background: rgba(10, 10, 12, 0.6); backdrop-filter: blur(12px);
@@ -208,11 +203,10 @@ def render_protein_3d_viewer(
                 position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
                 display: flex; gap: 6px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px);
                 padding: 6px 12px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 10;
-                width: max-content; max-width: 92%; overflow-x: auto;
             }}
             .control-btn {{
                 background: rgba(255, 255, 255, 0.08); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 20px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
+                border-radius: 20px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
             }}
             .control-btn:active, .control-btn.active {{ background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; color: #38bdf8; }}
         </style>
@@ -231,9 +225,11 @@ def render_protein_3d_viewer(
             let viewer = null;
             document.addEventListener("DOMContentLoaded", function() {{
                 viewer = $3Dmol.createViewer(document.getElementById('viewport'), {{backgroundColor: '0x000000', backgroundAlpha: 0.0}});
-                {fetch_js}
+                let pdbData = `{escaped_pdb}`;
+                viewer.addModel(pdbData, "pdb");
                 viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
-                viewer.zoomTo(); viewer.render();
+                viewer.zoomTo(); 
+                viewer.render();
             }});
             function setStyle(type) {{
                 if (!viewer) return;
@@ -509,12 +505,9 @@ def fetch_pdb_similar(protein_seq: str):
     pdb_matches = []
     if response.status_code == 200:
         for item in response.json().get("result_set", []):
-            # Extract only the 4-letter PDB ID (e.g., '11SY_1' -> '11SY')
             full_id = item["identifier"]
             pdb_id = full_id.split("_")[0][:4]
             match_pct = item.get("score", 0) * 100
-            
-            # Avoid duplicates if multiple chains map to the same PDB ID
             if not any(d["PDB ID"] == pdb_id for d in pdb_matches):
                 pdb_matches.append(
                     {
@@ -523,6 +516,7 @@ def fetch_pdb_similar(protein_seq: str):
                     }
                 )
     return pdb_matches
+
 
 def analyze_amino_acids(protein_seq: str):
     if not protein_seq:
@@ -845,23 +839,25 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            # --- PDB STRUCTURE VISUALIZATION (Fetching top PDB match directly) ---
+            # --- PDB STRUCTURE VISUALIZATION (Direct PDB Content Download) ---
             st.header("Protein Structure Visualization (Top PDB Match)")
 
-            with st.spinner("Fetching top PDB structure match from RCSB..."):
+            with st.spinner("Fetching top PDB structure content from RCSB..."):
                 pdb_matches = fetch_pdb_similar(protein_seq)
 
             if pdb_matches and len(pdb_matches) > 0:
                 top_pdb_id = pdb_matches[0]["PDB ID"]
-                st.success(
-                    f"Successfully fetched top PDB match: **{top_pdb_id}**"
-                )
+                pdb_url = f"https://files.rcsb.org/download/{top_pdb_id}.pdb"
+                res = requests.get(pdb_url)
 
-                st.subheader(f"Interactive 3D Viewer for PDB: {top_pdb_id}")
-                render_protein_3d_viewer(
-                    pdb_input=top_pdb_id, is_pdb_id=True, height=500
-                )
+                if res.status_code == 200:
+                    st.success(
+                        f"Successfully loaded structure for PDB ID: **{top_pdb_id}**"
+                    )
+                    render_protein_3d_viewer(pdb_data=res.text, height=500)
+                else:
+                    st.error(
+                        f"Could not download PDB file content for {top_pdb_id}."
+                    )
             else:
-                st.warning(
-                    "No close PDB structural matches found to display directly."
-                )
+                st.warning("No close PDB structural matches found to display.")
