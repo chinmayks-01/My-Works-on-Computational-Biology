@@ -54,7 +54,7 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
 
 
 def identify_sequence(seq: str):
-    """Determines sequence type, calculates GC content, and identifies gene via NCBI BLAST."""
+    """Determines sequence type, calculates GC content, and identifies gene via NCBI QBLAST."""
     seq = seq.strip().upper()
     seq_set = set(seq)
     dna_bases = set("ACGTN")
@@ -73,112 +73,39 @@ def identify_sequence(seq: str):
 
     gc_content = gc_fraction(seq) * 100 if seq_type in ["DNA", "RNA"] else None
 
-    # BLAST Setup
+    # Determine BLAST parameters matching your snippet
     program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
     database = "nt" if seq_type in ["DNA", "RNA"] else "nr"
-    base_url = "https://blast.ncbi.nlm.nih.gov/Blast.cgi"
-    headers = {"User-Agent": "StructuredBioPipeline/1.0"}
-    
-    put_params = {
-        "CMD": "Put",
-        "PROGRAM": program,
-        "DATABASE": database,
-        "QUERY": seq,
-        "HITLIST_SIZE": "1"
-    }
-    
+
     gene_name = "Unknown Gene"
-    
+
     try:
-        # Step 1: Submit Job
-        res = requests.post(base_url, data=put_params, headers=headers, timeout=15)
-        res.raise_for_status()
-        
-        rid = next((line.split("=")[1].strip() for line in res.text.split("\n") if "RID =" in line), None)
-        
-        if rid:
-            with st.spinner("Waiting for NCBI BLAST alignment results..."):
-                max_retries = 15  # Cap polling at 60 seconds (15 x 4s)
-                attempts = 0
-                job_ready = False
+        with st.spinner(f"Connecting to NCBI QBLAST for {seq_type} query..."):
+            # NCBIWWW handles polling, status checks, and retries automatically
+            result_handle = NCBIWWW.qblast(
+                program=program, 
+                database=database, 
+                sequence=seq,
+                hitlist_size=1  # Limit to 1 hit for fast retrieval
+            )
+            blast_xml = result_handle.read()
+            result_handle.close()
 
-                # Step 2: Poll status
-                while attempts < max_retries:
-                    time.sleep(4)
-                    attempts += 1
-                    
-                    status_res = requests.get(
-                        base_url, 
-                        params={"CMD": "Get", "FORMAT_OBJECT": "SearchInfo", "RID": rid}, 
-                        headers=headers,
-                        timeout=15
-                    )
-                    
-                    if "Status=READY" in status_res.text:
-                        job_ready = True
-                        break
-                    elif "Status=FAILED" in status_res.text:
-                        return seq_type, gc_content, "Unknown Gene (BLAST Search Failed)"
-                    elif "Status=UNKNOWN" in status_res.text:
-                        return seq_type, gc_content, "Unknown Gene (Expired RID)"
+            # Parse XML output directly via ElementTree
+            root = ET.fromstring(blast_xml)
+            hit = root.find(".//Hit")
 
-            # Step 3: Fetch and Parse Results
-            if job_ready:
-                # Give NCBI a short moment to finalize generating the JSON object
-                time.sleep(2)
-                
-                results_res = requests.get(
-                    base_url, 
-                    params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "JSON2"}, 
-                    headers=headers,
-                    timeout=15
-                )
-                
-                # Check if JSON2 response is empty or blank
-                if not results_res.text.strip():
-                    # Fallback to XML parsing if JSON2 payload is empty
-                    xml_res = requests.get(
-                        base_url, 
-                        params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "XML"}, 
-                        headers=headers,
-                        timeout=15
-                    )
-                    if "<Hit_def>" in xml_res.text:
-                        gene_name = xml_res.text.split("<Hit_def>")[1].split("</Hit_def>")[0]
-                    else:
-                        gene_name = "No significant BLAST hits found"
+            if hit is not None:
+                hit_def = hit.find("Hit_def")
+                if hit_def is not None and hit_def.text:
+                    gene_name = hit_def.text
                 else:
-                    try:
-                        data = results_res.json()
-                        
-                        # Handle both single dict and list response structures safely
-                        if isinstance(data, list) and len(data) > 0:
-                            data = data[0]
-                            
-                        hits = (
-                            data.get("BlastOutput2", {})
-                            .get("report", {})
-                            .get("results", {})
-                            .get("search", {})
-                            .get("hits", [])
-                        )
-                        
-                        if hits:
-                            gene_name = hits[0]["description"][0].get("title", "Unknown Gene")
-                        else:
-                            gene_name = "No significant BLAST hits found"
-
-                    except Exception as json_err:
-                        gene_name = f"Unknown Gene (Parse Error: {json_err})"
+                    gene_name = "Top hit title unavailable"
             else:
-                gene_name = "Unknown Gene (BLAST Timed Out)"
-        else:
-            gene_name = "Unknown Gene (Failed to obtain RID)"
-            
-    except requests.exceptions.RequestException as e:
-        gene_name = f"Unknown Gene (Network Error: {e})"
+                gene_name = "BLAST finished, but no significant hits were found."
+
     except Exception as e:
-        gene_name = f"Unknown Gene ({e})"
+        gene_name = f"BLAST query failed: {e}"
 
     return seq_type, gc_content, gene_name
 
