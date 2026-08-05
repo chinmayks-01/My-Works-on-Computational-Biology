@@ -604,17 +604,17 @@ import streamlit as st
 st.set_page_config(
     page_title="Bioinformatics Sequence Pipeline", layout="wide"
 )
+inject_custom_ui_theme()
 
-# inject_custom_ui_theme()
-
-html_content = """<style>
+st.markdown("""<style>
 .header-container {
 display: flex;
 flex-direction: row;
 justify-content: space-between;
-align-items: flex-start; 
+align-items: flex-start;
 width: 100%;
 margin-bottom: 1.5rem;
+position: relative;
 }
 @keyframes titleTextGlow {
 0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
@@ -628,103 +628,120 @@ background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
 animation: titleTextGlow 4s ease-in-out infinite;
 display: inline-block;
 }
+
+/* NEW SLIGHTLY SMALLER SVG ANIMATION STYLING */
 .central-dogma-anim-vertical {
-width: 90px;
-height: 280px;
+position: absolute;
+top: -10px;
+right: 15px;
+width: 100px;  
+height: 320px; 
 overflow: visible;
+z-index: 100;
 }
-@keyframes pulseGlow {
-0%, 100% { opacity: 0.7; filter: drop-shadow(0 0 3px #38bdf8); }
-50% { opacity: 1; filter: drop-shadow(0 0 8px #c084fc); }
+
+@keyframes spinDna {
+0% { transform: scaleX(1); }
+50% { transform: scaleX(-0.85); filter: drop-shadow(0 0 10px #38bdf8); }
+100% { transform: scaleX(1); }
 }
-@keyframes rnaFlowVertical {
-0% { stroke-dashoffset: 40; }
-100% { stroke-dashoffset: 0; }
+.dna-layer {
+transform-origin: 60px 80px;
+animation: spinDna 5s linear infinite;
 }
-@keyframes globularPulse {
-0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px #c084fc); }
-50% { transform: scale(1.04); filter: drop-shadow(0 0 8px #fb7185); }
+
+@keyframes swayRna {
+0%, 100% { transform: translateX(0px); }
+50% { transform: translateX(3px); }
 }
-.dna-glow {
-animation: pulseGlow 4s ease-in-out infinite;
+.rna-strand {
+animation: swayRna 3s ease-in-out infinite;
 }
-.rna-flow-v {
-stroke-dasharray: 6 4;
-animation: rnaFlowVertical 2s linear infinite;
+
+@keyframes pulseProtein {
+0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.5)); }
+50% { transform: scale(1.08) rotate(3deg); filter: drop-shadow(0 0 15px rgba(192, 132, 252, 1)); }
 }
-.globular-protein {
-transform-origin: 50px 290px; 
-animation: globularPulse 3s ease-in-out infinite;
+.protein-cluster {
+transform-origin: 60px 345px;
+animation: pulseProtein 3.5s ease-in-out infinite;
+}
+
+@keyframes processArrow {
+0%, 100% { opacity: 0.3; }
+50% { opacity: 1; filter: drop-shadow(0 0 6px white); }
+}
+.process-arrow {
+animation: processArrow 2s infinite;
 }
 </style>
-
 <div class="header-container">
-<div style="flex: 1; min-width: 320px; padding-top: 10px;">
+<div style="flex: 1; min-width: 320px;">
 <h1 style='font-size: 2.8rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
 Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 </h1>
 </div>
-
-<div style="flex-shrink: 0; text-align: right; margin-right: 20px;">
-<svg class="central-dogma-anim-vertical" viewBox="0 0 100 360" fill="none" xmlns="http://www.w3.org/2000/svg">
+<div style="flex-shrink: 0; text-align: right;">
+<svg class="central-dogma-anim-vertical" viewBox="0 0 120 400" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs>
-<linearGradient id="dnaGradV" x1="0" y1="10" x2="0" y2="140" gradientUnits="userSpaceOnUse">
+<!-- Single Unified Gradient for the entire vertical structure -->
+<linearGradient id="unifiedGrad" x1="0" y1="0" x2="0" y2="400" gradientUnits="userSpaceOnUse">
 <stop offset="0%" stop-color="#38bdf8"/>
-<stop offset="100%" stop-color="#818cf8"/>
-</linearGradient>
-<linearGradient id="mrnaGradV" x1="0" y1="148" x2="0" y2="230" gradientUnits="userSpaceOnUse">
-<stop offset="0%" stop-color="#818cf8"/>
+<stop offset="50%" stop-color="#818cf8"/>
 <stop offset="100%" stop-color="#c084fc"/>
-</linearGradient>
-<linearGradient id="proteinGradV" x1="0" y1="240" x2="0" y2="350" gradientUnits="userSpaceOnUse">
-<stop offset="0%" stop-color="#c084fc"/>
-<stop offset="100%" stop-color="#fb7185"/>
 </linearGradient>
 </defs>
 
-<g class="dna-glow">
-<line x1="38" y1="22" x2="62" y2="22" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
-<line x1="38" y1="39" x2="62" y2="39" stroke="#38bdf8" stroke-width="1.8" opacity="0.8"/>
-<line x1="38" y1="56" x2="62" y2="56" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
-<line x1="38" y1="73" x2="62" y2="73" stroke="#60a5fa" stroke-width="1.8" opacity="0.8"/>
-<line x1="38" y1="90" x2="62" y2="90" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
-<line x1="38" y1="107" x2="62" y2="107" stroke="#818cf8" stroke-width="1.8" opacity="0.8"/>
-<line x1="38" y1="124" x2="62" y2="124" stroke="#a78bfa" stroke-width="1.8" opacity="0.8"/>
-<path d="M 50 15 C 30 20, 30 32, 50 39 C 70 46, 70 58, 50 65 C 30 72, 30 84, 50 91 C 70 98, 70 110, 50 117 C 30 124, 30 133, 50 138" stroke="url(#dnaGradV)" stroke-width="3" stroke-linecap="round" fill="none"/>
-<path d="M 50 15 C 70 20, 70 32, 50 39 C 30 46, 30 58, 50 65 C 70 72, 70 84, 50 91 C 30 98, 30 110, 50 117 C 70 124, 70 133, 50 138" stroke="url(#dnaGradV)" stroke-width="3" stroke-linecap="round" fill="none" opacity="0.75"/>
+<!-- 1. DISTINCT DNA DOUBLE HELIX -->
+<g class="dna-layer">
+<!-- Intersecting Double Helix Paths -->
+<path d="M 40 30 C 40 55, 80 65, 80 90 C 80 115, 40 125, 40 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round"/>
+<path d="M 80 30 C 80 55, 40 65, 40 90 C 40 115, 80 125, 80 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
+
+<!-- Connecting Base Pairs (Rungs) -->
+<line x1="42" y1="30" x2="78" y2="30" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="50" y1="45" x2="70" y2="45" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="65" y1="75" x2="55" y2="75" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="78" y1="90" x2="42" y2="90" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="65" y1="105" x2="55" y2="105" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="50" y1="135" x2="70" y2="135" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
+<line x1="42" y1="150" x2="78" y2="150" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 </g>
 
-<path d="M 50 141 L 50 150" stroke="url(#dnaGradV)" stroke-width="2" stroke-dasharray="3 2" opacity="0.6"/>
-
-<g>
-<path class="rna-flow-v" d="M 50 151 C 34 162, 66 175, 50 190 C 38 200, 60 212, 50 222" stroke="url(#mrnaGradV)" stroke-width="2.6" fill="none" stroke-linecap="round"/>
-<line x1="42" y1="163" x2="34" y2="163" stroke="#818cf8" stroke-width="1.8" stroke-linecap="round"/>
-<circle cx="33" cy="163" r="2.2" fill="#38bdf8"/>
-<line x1="58" y1="180" x2="66" y2="180" stroke="#a855f7" stroke-width="1.8" stroke-linecap="round"/>
-<circle cx="67" cy="180" r="2.2" fill="#c084fc"/>
-<line x1="44" y1="198" x2="36" y2="198" stroke="#c084fc" stroke-width="1.8" stroke-linecap="round"/>
-<circle cx="35" cy="198" r="2.2" fill="#fb7185"/>
-<line x1="55" y1="214" x2="63" y2="214" stroke="#e879f9" stroke-width="1.8" stroke-linecap="round"/>
-<circle cx="64" cy="214" r="2.2" fill="#facc15"/>
+<!-- TRANSCRIPTION ARROW -->
+<g class="process-arrow">
+<line x1="60" y1="158" x2="60" y2="178" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
+<polygon points="55,174 65,174 60,182" fill="url(#unifiedGrad)"/>
 </g>
 
-<path d="M 50 223 L 50 232" stroke="url(#mrnaGradV)" stroke-width="2" stroke-dasharray="2 2" opacity="0.6"/>
+<!-- 2. DISTINCT RNA SINGLE STRAND WITH SOLID BACKBONE -->
+<g class="rna-strand">
+<!-- Solid Wavy Single Backbone -->
+<path d="M 50 195 C 75 220, 45 260, 70 285" stroke="url(#unifiedGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
+</g>
 
-<g class="globular-protein">
-<path d="M 50 233 C 30 243, 30 268, 50 278 C 70 288, 75 263, 55 253 C 45 248, 38 263, 48 273 C 58 283, 40 298, 50 313 C 60 328, 40 343, 50 353" stroke="url(#proteinGradV)" stroke-width="3.2" fill="none" stroke-linecap="round"/>
-<circle cx="50" cy="233" r="3.5" fill="#38bdf8"/>
-<circle cx="36" cy="260" r="4" fill="#a855f7"/>
-<circle cx="62" cy="270" r="3.5" fill="#e879f9"/>
-<circle cx="45" cy="295" r="4.5" fill="#fb7185"/>
-<circle cx="58" cy="328" r="3.8" fill="#c084fc"/>
-<circle cx="50" cy="353" r="3.5" fill="#facc15"/>
+<!-- TRANSLATION ARROW -->
+<g class="process-arrow">
+<line x1="60" y1="298" x2="60" y2="318" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
+<polygon points="55,314 65,314 60,322" fill="url(#unifiedGrad)"/>
+</g>
+
+<!-- 3. DISTINCT FOLDED PROTEIN POLYPEPTIDE CHAIN -->
+<g class="protein-cluster">
+<!-- Tangled Polypeptide Backbone Connectors -->
+<path d="M 40 345 L 60 335 L 80 345 L 70 365 L 50 365 Z" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" stroke-linejoin="round"/>
+<path d="M 60 335 L 50 365" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" opacity="0.6"/>
+
+<!-- Amino Acid Spheres -->
+<circle cx="40" cy="345" r="9" fill="url(#unifiedGrad)"/>
+<circle cx="60" cy="335" r="9" fill="url(#unifiedGrad)"/>
+<circle cx="80" cy="345" r="9" fill="url(#unifiedGrad)"/>
+<circle cx="70" cy="365" r="9" fill="url(#unifiedGrad)"/>
+<circle cx="50" cy="365" r="9" fill="url(#unifiedGrad)"/>
 </g>
 </svg>
 </div>
-</div>"""
-
-# Render the HTML safely
-st.markdown(html_content, unsafe_allow_html=True)
+</div>""", unsafe_allow_html=True)
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
     "NCBI Entrez Email", value="your.email@example.com"
