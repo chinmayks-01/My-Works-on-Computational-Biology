@@ -169,14 +169,7 @@ def inject_custom_ui_theme():
 def render_protein_3d_viewer(
     pdb_input: str, is_pdb_id: bool = True, height: int = 480
 ):
-    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js.
-
-    Parameters:
-    - pdb_input: PDB ID string (e.g. '1A2C') OR raw PDB file contents.
-    - is_pdb_id: True if passing a 4-letter PDB ID, False if passing raw PDB string (e.g., from OmegaFold).
-    - height: Height of the canvas in pixels.
-    """
-    # Sanitize string input for JavaScript injection if raw PDB data is passed
+    """Renders a touch-optimized, mobile-friendly 3D protein viewer using 3Dmol.js."""
     if is_pdb_id:
         fetch_js = f"v.addModelAsPdbId('{pdb_input.strip()}');"
     else:
@@ -207,7 +200,6 @@ def render_protein_3d_viewer(
                 font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             }}
             
-            /* Glassmorphism Outer Wrapper */
             .viewer-wrapper {{
                 position: relative;
                 width: 100%;
@@ -219,14 +211,12 @@ def render_protein_3d_viewer(
                 overflow: hidden;
             }}
 
-            /* Canvas Container - touch-action: none prevents parent page scrolling during 3D rotation */
             #viewport {{
                 width: 100%;
                 height: 100%;
                 touch-action: none;
             }}
 
-            /* Mobile Floating Quick Action Toolbar */
             .controls-bar {{
                 position: absolute;
                 bottom: 12px;
@@ -265,7 +255,6 @@ def render_protein_3d_viewer(
                 color: #38bdf8;
             }}
 
-            /* Mobile Gesture Hint Badge */
             .gesture-hint {{
                 position: absolute;
                 top: 10px;
@@ -319,14 +308,13 @@ def render_protein_3d_viewer(
                 if (!viewer) return;
                 currentStyle = type;
                 
-                // Update active state on buttons
                 document.querySelectorAll('.control-btn').forEach(btn => {{
                     if(['Cartoon', 'Sticks', 'Sphere'].includes(btn.innerText)) {{
                         btn.classList.remove('active');
                     }}
                 }});
 
-                viewer.setStyle({{}}, {{}}); // Clear existing styles
+                viewer.setStyle({{}}, {{}});
 
                 if (type === 'cartoon') {{
                     viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
@@ -369,7 +357,6 @@ def render_protein_3d_viewer(
     components.html(html_code, height=height + 10, scrolling=False)
 
 def fetch_sequence(input_query: str, uploaded_file) -> str:
-    """Parses an uploaded FASTA file, fetches an Accession ID, or processes raw text."""
     if uploaded_file is not None:
         string_data = uploaded_file.getvalue().decode("utf-8")
         from io import StringIO
@@ -380,7 +367,6 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
     if not input_query:
         return ""
         
-    
     if any(char.isdigit() for char in input_query) and len(input_query) < 20:
         for db in ["nucleotide", "protein"]:
             try:
@@ -393,12 +379,10 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
         st.error("Could not fetch sequence for the given Accession ID.")
         return ""
     
-    
     return input_query.replace(" ", "").replace("\n", "").upper()
 
 
 def identify_sequence(seq: str):
-    """Determines sequence type, calculates GC content, and identifies top 5 gene matches via NCBI BLAST."""
     seq = seq.strip().upper()
     seq_set = set(seq)
     dna_bases = set("ACGTN")
@@ -417,14 +401,12 @@ def identify_sequence(seq: str):
 
     gc_content = gc_fraction(seq) * 100 if seq_type in ["DNA", "RNA"] else None
 
-    
     program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
     database = "nt" if seq_type in ["DNA", "RNA"] else "nr"
     
     gene_matches = []
     
     try:
-        
         result_handle = NCBIWWW.qblast(
             program=program, 
             database=database, 
@@ -435,32 +417,25 @@ def identify_sequence(seq: str):
         result_handle.close()
 
         root = ET.fromstring(blast_xml)
-        query_len = float(root.find(".//BlastOutput_query-len").text) if root.find(".//BlastOutput_query-len") is not None else len(seq)
-        
         
         for hit in root.findall(".//Hit")[:5]:
-            
             accession_elem = hit.find("Hit_accession")
             accession_id = accession_elem.text if accession_elem is not None else "N/A"
             
-            
             title_elem = hit.find("Hit_def")
             title = title_elem.text if title_elem is not None else "Unknown Gene"
-            
             
             hsp = hit.find(".//Hsp")
             hit_gc = None
             pct_match = 0.0
             
             if hsp is not None:
-                
                 identity_elem = hsp.find("Hsp_identity")
                 align_len_elem = hsp.find("Hsp_align-len")
                 if identity_elem is not None and align_len_elem is not None:
                     identity = float(identity_elem.text)
                     align_len = float(align_len_elem.text)
                     pct_match = (identity / align_len) * 100 if align_len > 0 else 0.0
-                
                 
                 hseq_elem = hsp.find("Hsp_hseq")
                 if hseq_elem is not None and hseq_elem.text and seq_type in ["DNA", "RNA"]:
@@ -482,7 +457,6 @@ def identify_sequence(seq: str):
 
 
 def central_dogma_pipeline(seq: str, seq_type: str):
-    """Handles transcription and translation."""
     bio_seq = Seq(seq)
     transcript = None
     
@@ -499,7 +473,6 @@ def central_dogma_pipeline(seq: str, seq_type: str):
 
 
 def fetch_pdb_similar(protein_seq: str):
-    """Fetches top 5 similar structures from RCSB PDB."""
     url = "https://search.rcsb.org/rcsbsearch/v2/query"
     query = {
         "query": {
@@ -522,7 +495,6 @@ def fetch_pdb_similar(protein_seq: str):
 
 
 def analyze_amino_acids(protein_seq: str):
-    """Calculates top 10 most frequent amino acids."""
     total_aa = len(protein_seq)
     counts = Counter(protein_seq)
     valid_counts = {aa: count for aa, count in counts.items() if aa in AA_NAMES}
@@ -540,29 +512,36 @@ def analyze_amino_acids(protein_seq: str):
     return pd.DataFrame(data)
 
 
-def predict_structure_omegafold(protein_seq: str, api_url: str = "YOUR_OMEGAFOLD_API_ENDPOINT"):
-    """Sends sequence to OmegaFold backend or public API endpoint and returns PDB string."""
+def predict_structure_omegafold(protein_seq: str, api_key: str = ""):
+    """Sends sequence to Neurosnap's hosted OmegaFold API endpoint."""
     try:
-        payload = {"sequence": protein_seq.strip()}
-        # If using a public or custom OmegaFold API endpoint
-        response = requests.post(
-            f"{api_url}/predict", json=payload, timeout=300
-        )
-
+        url = "https://api.neurosnap.ai/v1/jobs"
+        headers = {
+            "X-API-KEY": api_key,
+            "Accept": "application/json"
+        }
+        payload = {
+            "services": ["OmegaFold"],
+            "inputs": {
+                "sequence": protein_seq.strip()
+            }
+        }
+        
+        response = requests.post(url, json=payload, headers=headers, timeout=300)
         if response.status_code == 200:
-            res_json = response.json()
-            return res_json.get("pdb_data")
+            job_data = response.json()
+            return job_data.get("pdb_data")
         else:
-            st.error(f"OmegaFold server error (Status {response.status_code})")
+            st.error(f"OmegaFold API error (Status {response.status_code})")
             return None
     except Exception as e:
         st.error(f"Failed to connect to OmegaFold service: {str(e)}")
         return None
 
+
 def predict_structure_colabfold(
     sequence: str, api_url: str = "YOUR_COLABFOLD_API_ENDPOINT"
 ):
-    """Sends sequence to ColabFold GPU backend and returns PDB string."""
     try:
         payload = {"sequence": sequence.strip()}
         response = requests.post(
@@ -580,7 +559,6 @@ def predict_structure_colabfold(
         return None
 
 def color_protein_sequence_block(seq: str) -> str:
-    """Renders sequence with solid colored background blocks matching standard MSA/Clustal tools."""
     bg_colors = {
         'A': '#80a0f0', 'I': '#80a0f0', 'L': '#80a0f0', 'M': '#80a0f0', 'F': '#80a0f0', 'W': '#80a0f0', 'V': '#80a0f0',
         'R': '#f01505', 'K': '#f01505',
@@ -608,9 +586,6 @@ def color_protein_sequence_block(seq: str) -> str:
     styled_html += "</div>"
     return styled_html
 
-st.set_page_config(
-    page_title="Bioinformatics Sequence Pipeline", layout="wide"
-)
 inject_custom_ui_theme()
 
 st.markdown("""<style>
@@ -636,7 +611,6 @@ animation: titleTextGlow 4s ease-in-out infinite;
 display: inline-block;
 }
 
-/* NEW SLIGHTLY SMALLER SVG ANIMATION STYLING */
 .central-dogma-anim-vertical {
 position: absolute;
 top: -10px;
@@ -691,7 +665,6 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 <div style="flex-shrink: 0; text-align: right;">
 <svg class="central-dogma-anim-vertical" viewBox="0 0 120 400" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs>
-<!-- Single Unified Gradient for the entire vertical structure -->
 <linearGradient id="unifiedGrad" x1="0" y1="0" x2="0" y2="400" gradientUnits="userSpaceOnUse">
 <stop offset="0%" stop-color="#38bdf8"/>
 <stop offset="50%" stop-color="#818cf8"/>
@@ -699,13 +672,10 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 </linearGradient>
 </defs>
 
-<!-- 1. DISTINCT DNA DOUBLE HELIX -->
 <g class="dna-layer">
-<!-- Intersecting Double Helix Paths -->
 <path d="M 40 30 C 40 55, 80 65, 80 90 C 80 115, 40 125, 40 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round"/>
 <path d="M 80 30 C 80 55, 40 65, 40 90 C 40 115, 80 125, 80 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
 
-<!-- Connecting Base Pairs (Rungs) -->
 <line x1="42" y1="30" x2="78" y2="30" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 <line x1="50" y1="45" x2="70" y2="45" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 <line x1="65" y1="75" x2="55" y2="75" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
@@ -715,31 +685,24 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 <line x1="42" y1="150" x2="78" y2="150" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
 </g>
 
-<!-- TRANSCRIPTION ARROW -->
 <g class="process-arrow">
 <line x1="60" y1="158" x2="60" y2="178" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
 <polygon points="55,174 65,174 60,182" fill="url(#unifiedGrad)"/>
 </g>
 
-<!-- 2. DISTINCT RNA SINGLE STRAND WITH SOLID BACKBONE -->
 <g class="rna-strand">
-<!-- Solid Wavy Single Backbone -->
 <path d="M 50 195 C 75 220, 45 260, 70 285" stroke="url(#unifiedGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
 </g>
 
-<!-- TRANSLATION ARROW -->
 <g class="process-arrow">
 <line x1="60" y1="298" x2="60" y2="318" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
 <polygon points="55,314 65,314 60,322" fill="url(#unifiedGrad)"/>
 </g>
 
-<!-- 3. DISTINCT FOLDED PROTEIN POLYPEPTIDE CHAIN -->
 <g class="protein-cluster">
-<!-- Tangled Polypeptide Backbone Connectors -->
 <path d="M 40 345 L 60 335 L 80 345 L 70 365 L 50 365 Z" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" stroke-linejoin="round"/>
 <path d="M 60 335 L 50 365" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" opacity="0.6"/>
 
-<!-- Amino Acid Spheres -->
 <circle cx="40" cy="345" r="9" fill="url(#unifiedGrad)"/>
 <circle cx="60" cy="335" r="9" fill="url(#unifiedGrad)"/>
 <circle cx="80" cy="345" r="9" fill="url(#unifiedGrad)"/>
@@ -749,23 +712,24 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
 </svg>
 </div>
 </div>""", unsafe_allow_html=True)
+
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
     "NCBI Entrez Email", value="your.email@example.com"
 )
 Entrez.email = user_email
 
+omega_api_key = st.sidebar.text_input("OmegaFold API Key (Neurosnap)", type="password", value="")
+
 
 # --- SECTION 1: INPUT SEQUENCE ---
 st.header("Input Sequence")
 
-# Normal plain text label
 st.markdown(
     "<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>",
     unsafe_allow_html=True,
 )
 
-# Radio options with hidden internal label
 input_option = st.radio(
     "Choose Input Method:",
     options=["Raw Sequence / Accession ID", "Upload FASTA File"],
@@ -773,10 +737,8 @@ input_option = st.radio(
     label_visibility="collapsed",
 )
 
-
 raw_input = ""
 uploaded_file = None
-
 
 if input_option == "Raw Sequence / Accession ID":
     raw_input = st.text_area(
@@ -863,13 +825,12 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            
             st.header("Protein Structure Visualization")
 
             engine = st.radio(
                 "Select Prediction Engine:",
                 options=[
-                    "OmegaFold (Fast | AI-Based)",
+                    "OmegaFold (Fast | API-Based)",
                     "ColabFold / AlphaFold2 (High-Accuracy | Up to 1200 aa)",
                 ],
                 horizontal=True,
@@ -879,18 +840,16 @@ if st.button("Run Pipeline", type="primary"):
             pdb_data = None
 
             if "OmegaFold" in engine:
-                with st.spinner("Predicting 3D structure using OmegaFold..."):
-                    # Replace URL below with your active OmegaFold backend endpoint if applicable
-                    OMEGAFOLD_API = "https://your-omegafold-backend-endpoint.ngrok-free.app"
-                    pdb_data = predict_structure_omegafold(protein_seq, api_url=OMEGAFOLD_API)
+                if not omega_api_key:
+                    st.warning("Please enter your OmegaFold API Key in the sidebar settings to run predictions.")
+                else:
+                    with st.spinner("Predicting 3D structure using OmegaFold API..."):
+                        pdb_data = predict_structure_omegafold(protein_seq, api_key=omega_api_key)
             else:
                 with st.spinner(
                     "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
                 ):
-                    # Replace URL below with your active ngrok/Modal endpoint
-                    COLABFOLD_API = (
-                        "https://banshee-remedy-oblong.ngrok-free.dev/"
-                    )
+                    COLABFOLD_API = "https://banshee-remedy-oblong.ngrok-free.dev/"
                     pdb_data = predict_structure_colabfold(
                         protein_seq, api_url=COLABFOLD_API
                     )
@@ -909,9 +868,10 @@ if st.button("Run Pipeline", type="primary"):
                     file_name="predicted_structure.pdb",
                     mime="chemical/x-pdb",
                 )
-            elif "OmegaFold" in engine:
-                st.error("Failed to predict 3D structure using OmegaFold API. Check backend connection.")
+            elif "OmegaFold" in engine and omega_api_key:
+                st.error("Failed to predict 3D structure using OmegaFold API. Verify your API key and network connection.")
             elif "ColabFold" in engine:
                 st.error(
                     "Failed to predict 3D structure using ColabFold API. Check backend connection."
+                )
                 )
