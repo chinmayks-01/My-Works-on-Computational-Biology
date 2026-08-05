@@ -2,18 +2,19 @@ import os
 import time
 import requests
 import pandas as pd
+import xml.etree.ElementTree as ET
 from collections import Counter
 import streamlit as st
 import py3Dmol
 from stmol import showmol
-from Bio import Entrez, SeqIO
+from Bio import Entrez, SeqIO, NCBIWWW
 from Bio.Seq import Seq
 from Bio.SeqUtils import gc_fraction
 
-
+# --- Configuration & Setup ---
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
-
+# Standard Amino Acid Full Names Mapping
 AA_NAMES = {
     'A': 'Alanine', 'C': 'Cysteine', 'D': 'Aspartic Acid', 'E': 'Glutamic Acid',
     'F': 'Phenylalanine', 'G': 'Glycine', 'H': 'Histidine', 'I': 'Isoleucine',
@@ -22,7 +23,7 @@ AA_NAMES = {
     'T': 'Threonine', 'V': 'Valine', 'W': 'Tryptophan', 'Y': 'Tyrosine'
 }
 
-
+# --- Core Logic Functions ---
 
 def fetch_sequence(input_query: str, uploaded_file) -> str:
     """Parses an uploaded FASTA file, fetches an Accession ID, or processes raw text."""
@@ -36,7 +37,7 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
     if not input_query:
         return ""
         
-    
+    # Check if Accession ID
     if any(char.isdigit() for char in input_query) and len(input_query) < 20:
         for db in ["nucleotide", "protein"]:
             try:
@@ -49,12 +50,12 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
         st.error("Could not fetch sequence for the given Accession ID.")
         return ""
     
-    
+    # Raw sequence
     return input_query.replace(" ", "").replace("\n", "").upper()
 
 
 def identify_sequence(seq: str):
-    """Determines sequence type, calculates GC content, and identifies gene via NCBI QBLAST."""
+    """Determines sequence type, calculates GC content, and identifies top 5 gene matches via NCBI BLAST."""
     seq = seq.strip().upper()
     seq_set = set(seq)
     dna_bases = set("ACGTN")
@@ -69,45 +70,72 @@ def identify_sequence(seq: str):
         seq_type = "Protein"
     else:
         st.error("Invalid sequence characters detected.")
-        return None, None, None
+        return None, None, []
 
     gc_content = gc_fraction(seq) * 100 if seq_type in ["DNA", "RNA"] else None
 
-    # Determine BLAST parameters matching your snippet
+    # BLAST Identification
     program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
     database = "nt" if seq_type in ["DNA", "RNA"] else "nr"
-
-    gene_name = "Unknown Gene"
-
+    
+    gene_matches = []
+    
     try:
-        with st.spinner(f"Connecting to NCBI QBLAST for {seq_type} query..."):
-            # NCBIWWW handles polling, status checks, and retries automatically
-            result_handle = NCBIWWW.qblast(
-                program=program, 
-                database=database, 
-                sequence=seq,
-                hitlist_size=1  # Limit to 1 hit for fast retrieval
-            )
-            blast_xml = result_handle.read()
-            result_handle.close()
+        # Use NCBIWWW for stable XML retrieval
+        result_handle = NCBIWWW.qblast(
+            program=program, 
+            database=database, 
+            sequence=seq,
+            hitlist_size=5  # Retrieve top 5 hits
+        )
+        blast_xml = result_handle.read()
+        result_handle.close()
 
-            # Parse XML output directly via ElementTree
-            root = ET.fromstring(blast_xml)
-            hit = root.find(".//Hit")
-
-            if hit is not None:
-                hit_def = hit.find("Hit_def")
-                if hit_def is not None and hit_def.text:
-                    gene_name = hit_def.text
-                else:
-                    gene_name = "Top hit title unavailable"
-            else:
-                gene_name = "BLAST finished, but no significant hits were found."
-
+        root = ET.fromstring(blast_xml)
+        query_len = float(root.find(".//BlastOutput_query-len").text) if root.find(".//BlastOutput_query-len") is not None else len(seq)
+        
+        # Iterate over up to 5 Hits
+        for hit in root.findall(".//Hit")[:5]:
+            # Accession ID
+            accession_elem = hit.find("Hit_accession")
+            accession_id = accession_elem.text if accession_elem is not None else "N/A"
+            
+            # Title / Name
+            title_elem = hit.find("Hit_def")
+            title = title_elem.text if title_elem is not None else "Unknown Gene"
+            
+            # Extract sequence alignment info from the top HSP (High-scoring Segment Pair)
+            hsp = hit.find(".//Hsp")
+            hit_gc = None
+            pct_match = 0.0
+            
+            if hsp is not None:
+                # Calculate Match Percentage (Identity %)
+                identity_elem = hsp.find("Hsp_identity")
+                align_len_elem = hsp.find("Hsp_align-len")
+                if identity_elem is not None and align_len_elem is not None:
+                    identity = float(identity_elem.text)
+                    align_len = float(align_len_elem.text)
+                    pct_match = (identity / align_len) * 100 if align_len > 0 else 0.0
+                
+                # Calculate GC content of the target matched sequence
+                hseq_elem = hsp.find("Hsp_hseq")
+                if hseq_elem is not None and hseq_elem.text and seq_type in ["DNA", "RNA"]:
+                    target_seq = hseq_elem.text.upper().replace("-", "")
+                    if target_seq:
+                        hit_gc = gc_fraction(target_seq) * 100
+            
+            gene_matches.append({
+                "Gene Name": title,
+                "Accession ID": accession_id,
+                "GC Content (%)": f"{hit_gc:.2f}" if hit_gc is not None else "N/A",
+                "Match Percentage (%)": f"{pct_match:.2f}"
+            })
+            
     except Exception as e:
-        gene_name = f"BLAST query failed: {e}"
+        st.warning(f"NCBI BLAST query encounter: {e}")
 
-    return seq_type, gc_content, gene_name
+    return seq_type, gc_content, gene_matches
 
 
 def central_dogma_pipeline(seq: str, seq_type: str):
@@ -132,59 +160,23 @@ def fetch_pdb_similar(protein_seq: str):
     url = "https://search.rcsb.org/rcsbsearch/v2/query"
     query = {
         "query": {
-            "type": "terminal",
-            "service": "sequence",
-            "parameters": {
-                "evalue_cutoff": 1,
-                "identity_cutoff": 0.3,
-                "target": "pdb_protein_sequence",
-                "value": protein_seq
-            }
+            "type": "terminal", "service": "sequence",
+            "parameters": {"evalue_cutoff": 1, "identity_cutoff": 0.3, "target": "pdb_protein_sequence", "value": protein_seq}
         },
         "return_type": "polymer_entity",
-        "request_options": {
-            "paginate": {"start": 0, "rows": 5},
-            "scoring_strategy": "sequence"
-        }
+        "request_options": {"paginate": {"start": 0, "rows": 5}, "scoring_strategy": "sequence"}
     }
     
+    response = requests.post(url, json=query)
     pdb_matches = []
-    
-    try:
-        response = requests.post(url, json=query, timeout=15)
-        
-        # RCSB returns HTTP 204 when there are no matching results
-        if response.status_code == 204 or not response.text.strip():
-            return []
-            
-        response.raise_for_status()
-        
-        # Safely parse JSON payload
-        data = response.json()
-        results = data.get("result_set", [])
-        
+    if response.status_code == 200:
+        results = response.json().get("result_set", [])
         for item in results:
             pdb_id = item["identifier"].split("_")[0]
-            score = item.get("score", 0.0)
-            match_pct = score * 100 if score <= 1.0 else score
-            
-            pdb_matches.append({
-                "PDB ID": pdb_id,
-                "Sequence Identity (%)": f"{match_pct:.2f}"
-            })
-            
-    except requests.exceptions.Timeout:
-        st.error("RCSB PDB API request timed out. Please try again.")
-    except requests.exceptions.ConnectionError:
-        st.error("Unable to connect to RCSB PDB. Please check your network connection.")
-    except requests.exceptions.HTTPError as err:
-        st.error(f"RCSB PDB API returned an error: {err}")
-    except requests.exceptions.JSONDecodeError:
-        st.error("Received invalid JSON response from RCSB PDB API.")
-    except Exception as e:
-        st.error(f"An unexpected error occurred: {e}")
-        
+            match_pct = item.get("score", 0) * 100
+            pdb_matches.append({"PDB ID": pdb_id, "Sequence Identity (%)": f"{match_pct:.2f}"})
     return pdb_matches
+
 
 def analyze_amino_acids(protein_seq: str):
     """Calculates top 10 most frequent amino acids."""
@@ -214,15 +206,16 @@ def predict_structure_esm(protein_seq: str):
     return None
 
 
+# --- STREAMLIT USER INTERFACE ---
 
-st.title("Welcome to The ProtCraft Wizard🧙🏻‍♂️")
+st.title("🧬 Sequence to Structure Analysis Pipeline")
 
-
+# Sidebar Configuration
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input("NCBI Entrez Email", value="your.email@example.com")
 Entrez.email = user_email
 
-
+# User Input Section
 st.header("1. Input Sequence")
 input_option = st.radio("Choose Input Method:", ("Raw Sequence / Accession ID", "Upload FASTA File"))
 
@@ -243,19 +236,25 @@ if st.button("Run Pipeline", type="primary"):
     else:
         st.success("Sequence successfully loaded!")
         
-        
+        # --- Section 2: Sequence Identification & BLAST ---
         st.header("2. Identification & BLAST Analysis")
         with st.spinner("Analyzing sequence type and querying BLAST..."):
-            seq_type, gc_content, gene_name = identify_sequence(sequence)
+            seq_type, gc_content, gene_matches = identify_sequence(sequence)
         
         if seq_type:
             col1, col2, col3 = st.columns(3)
             col1.metric("Sequence Type", seq_type)
             col2.metric("GC Content", f"{gc_content:.2f}%" if gc_content is not None else "N/A")
             col3.metric("Sequence Length", f"{len(sequence)} bp/aa")
-            st.info(f"**Predicted Gene Name (BLAST):** {gene_name}")
-
             
+            st.subheader("Top 5 Gene Matches (NCBI BLAST)")
+            if gene_matches:
+                df_matches = pd.DataFrame(gene_matches)
+                st.dataframe(df_matches, use_container_width=True)
+            else:
+                st.info("No significant BLAST hits found.")
+
+            # --- Section 3: Central Dogma Pipeline ---
             st.header("3. Transcription & Translation")
             transcript, protein_seq = central_dogma_pipeline(sequence, seq_type)
             
@@ -266,7 +265,7 @@ if st.button("Run Pipeline", type="primary"):
             with st.expander("View Translated Protein Sequence", expanded=True):
                 st.text_area("Protein Sequence", protein_seq, height=100)
 
-            
+            # --- Section 4: Protein Analysis & PDB Matches ---
             st.header("4. Protein Analysis")
             col_a, col_b = st.columns(2)
             
@@ -287,7 +286,7 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            
+            # --- Section 5: Structure Prediction & 3D Visualization ---
             st.header("5. 3D Structure Prediction")
             if len(protein_seq) > 400:
                 st.warning("Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to sequences ≤ 400 residues.")
@@ -298,7 +297,7 @@ if st.button("Run Pipeline", type="primary"):
                 if pdb_data:
                     st.success("3D Structure predicted successfully!")
                     
-                    
+                    # 3D Viewer Render
                     view = py3Dmol.view(width=800, height=500)
                     view.addModel(pdb_data, "pdb")
                     view.setStyle({'cartoon': {'color': 'spectrum'}})
@@ -306,7 +305,7 @@ if st.button("Run Pipeline", type="primary"):
                     st.subheader("Interactive 3D Structure Viewer")
                     showmol(view, height=500, width=800)
                     
-                    
+                    # Download Option
                     st.download_button(
                         label="Download PDB File",
                         data=pdb_data,
