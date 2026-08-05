@@ -536,14 +536,6 @@ def analyze_amino_acids(protein_seq: str):
     return pd.DataFrame(data)
 
 
-def predict_structure_esm(protein_seq: str):
-    url = "https://api.esmatlas.com/foldSequence/v1/pdb/"
-    res = requests.post(
-        url, data=protein_seq, headers={"Content-Type": "text/plain"}
-    )
-    return res.text if res.status_code == 200 else None
-
-
 def color_protein_sequence_block(seq: str) -> str:
     bg_colors = {
         "A": "#80a0f0",
@@ -847,33 +839,23 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            # --- PROTEIN STRUCTURE VISUALIZATION (ESMFold Integrated) ---
-            st.header("Protein Structure Visualization")
+            # --- PDB STRUCTURE VISUALIZATION (Fetching top PDB match directly) ---
+            st.header("Protein Structure Visualization (Top PDB Match)")
 
-            pdb_data = None
-            if len(protein_seq) > 400:
-                st.warning(
-                    "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to sequences shorter than 400 residues."
+            with st.spinner("Fetching top PDB structure match from RCSB..."):
+                pdb_matches = fetch_pdb_similar(protein_seq)
+
+            if pdb_matches and len(pdb_matches) > 0:
+                top_pdb_id = pdb_matches[0]["PDB ID"]
+                st.success(
+                    f"Successfully fetched top PDB match: **{top_pdb_id}**"
+                )
+
+                st.subheader(f"Interactive 3D Viewer for PDB: {top_pdb_id}")
+                render_protein_3d_viewer(
+                    pdb_input=top_pdb_id, is_pdb_id=True, height=500
                 )
             else:
-                with st.spinner(
-                    "Predicting 3D structure using ESMFold API..."
-                ):
-                    pdb_data = predict_structure_esm(protein_seq)
-
-            if pdb_data:
-                st.success("3D Structure predicted successfully!")
-
-                st.subheader("Interactive 3D Structure Viewer")
-                render_protein_3d_viewer(
-                    pdb_input=pdb_data, is_pdb_id=False, height=500
+                st.warning(
+                    "No close PDB structural matches found to display directly."
                 )
-
-                st.download_button(
-                    label="Download PDB File",
-                    data=pdb_data,
-                    file_name="predicted_structure.pdb",
-                    mime="chemical/x-pdb",
-                )
-            elif len(protein_seq) <= 400:
-                st.error("Failed to predict 3D structure using ESMFold API.")
