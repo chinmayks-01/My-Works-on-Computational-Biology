@@ -170,10 +170,16 @@ def auto_scroll():
     """Injects a tiny Javascript snippet to smoothly scroll the page down during execution."""
     scroll_js = """
     <script>
-        const main = window.parent.document.querySelector('.main');
-        if (main) {
-            main.scrollTo({ top: main.scrollHeight, behavior: 'smooth' });
-        }
+        // Add a slight delay to ensure Streamlit has finished rendering the new elements to the DOM
+        setTimeout(function() {
+            const parentDoc = window.parent.document;
+            // Target the modern Streamlit scroll container
+            const container = parentDoc.querySelector('[data-testid="stAppViewContainer"]') || parentDoc.querySelector('.main');
+            
+            if (container) {
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            }
+        }, 300); // 300 millisecond delay gives the UI time to draw
     </script>
     """
     components.html(scroll_js, height=0, width=0)
