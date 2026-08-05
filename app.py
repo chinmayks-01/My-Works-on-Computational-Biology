@@ -881,7 +881,7 @@ if st.button("Run Pipeline", type="primary"):
                 ):
                     # Replace URL below with your active ngrok/Modal endpoint
                     COLABFOLD_API = (
-                        "https://your-backend-endpoint.ngrok-free.app"
+                        "https://banshee-remedy-oblong.ngrok-free.dev/"
                     )
                     pdb_data = predict_structure_colabfold(
                         protein_seq, api_url=COLABFOLD_API
