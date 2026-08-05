@@ -208,24 +208,22 @@ def predict_structure_esm(protein_seq: str):
 
 def color_protein_sequence_block(seq: str) -> str:
     """Renders sequence with solid colored background blocks matching standard MSA/Clustal tools."""
-    
     bg_colors = {
-        'A': '#80a0f0', 'I': '#80a0f0', 'L': '#80a0f0', 'M': '#80a0f0', 'F': '#80a0f0', 'W': '#80a0f0', 'V': '#80a0f0', 
-        'R': '#f01505', 'K': '#f01505',                                                                               
-        'N': '#00ff00', 'Q': '#00ff00',                                                                               
-        'D': '#c000c0', 'E': '#c000c0',                                                                               
-        'C': '#f08080',                                                                                               
-        'G': '#f09040',                                                                                               
-        'P': '#ffff00',                                                                                              
-        'H': '#15a4a4', 'Y': '#15a4a4',                                                                               
-        'S': '#15a400', 'T': '#15a400'                                                                                
+        'A': '#80a0f0', 'I': '#80a0f0', 'L': '#80a0f0', 'M': '#80a0f0', 'F': '#80a0f0', 'W': '#80a0f0', 'V': '#80a0f0',
+        'R': '#f01505', 'K': '#f01505',
+        'N': '#00ff00', 'Q': '#00ff00',
+        'D': '#c000c0', 'E': '#c000c0',
+        'C': '#f08080',
+        'G': '#f09040',
+        'P': '#ffff00',
+        'H': '#15a4a4', 'Y': '#15a4a4',
+        'S': '#15a400', 'T': '#15a400'
     }
 
     styled_html = "<div style='font-family: monospace; font-size: 15px; word-break: break-all; line-height: 2.0; background-color: #222; padding: 14px; border-radius: 6px; letter-spacing: 1px;'>"
     
     for aa in seq:
         bg = bg_colors.get(aa, "#ffffff")
-       
         text_color = "#ffffff" if aa in ['R', 'K', 'S', 'T', 'D', 'E'] else "#000000"
         
         styled_html += (
