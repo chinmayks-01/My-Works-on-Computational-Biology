@@ -509,14 +509,20 @@ def fetch_pdb_similar(protein_seq: str):
     pdb_matches = []
     if response.status_code == 200:
         for item in response.json().get("result_set", []):
-            pdb_matches.append(
-                {
-                    "PDB ID": item["identifier"].split("_")[0],
-                    "Sequence Identity (%)": f"{item.get('score', 0) * 100:.2f}",
-                }
-            )
+            # Extract only the 4-letter PDB ID (e.g., '11SY_1' -> '11SY')
+            full_id = item["identifier"]
+            pdb_id = full_id.split("_")[0][:4]
+            match_pct = item.get("score", 0) * 100
+            
+            # Avoid duplicates if multiple chains map to the same PDB ID
+            if not any(d["PDB ID"] == pdb_id for d in pdb_matches):
+                pdb_matches.append(
+                    {
+                        "PDB ID": pdb_id,
+                        "Sequence Identity (%)": f"{match_pct:.2f}",
+                    }
+                )
     return pdb_matches
-
 
 def analyze_amino_acids(protein_seq: str):
     if not protein_seq:
