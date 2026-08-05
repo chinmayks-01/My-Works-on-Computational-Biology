@@ -12,10 +12,10 @@ from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
 from Bio.SeqUtils import gc_fraction
 
-# --- Configuration & Setup ---
+
 st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
 
-# Standard Amino Acid Full Names Mapping
+
 AA_NAMES = {
     'A': 'Alanine', 'C': 'Cysteine', 'D': 'Aspartic Acid', 'E': 'Glutamic Acid',
     'F': 'Phenylalanine', 'G': 'Glycine', 'H': 'Histidine', 'I': 'Isoleucine',
@@ -24,7 +24,7 @@ AA_NAMES = {
     'T': 'Threonine', 'V': 'Valine', 'W': 'Tryptophan', 'Y': 'Tyrosine'
 }
 
-# --- Core Logic Functions ---
+
 
 def fetch_sequence(input_query: str, uploaded_file) -> str:
     """Parses an uploaded FASTA file, fetches an Accession ID, or processes raw text."""
@@ -38,7 +38,7 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
     if not input_query:
         return ""
         
-    # Check if Accession ID
+    
     if any(char.isdigit() for char in input_query) and len(input_query) < 20:
         for db in ["nucleotide", "protein"]:
             try:
@@ -51,7 +51,7 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
         st.error("Could not fetch sequence for the given Accession ID.")
         return ""
     
-    # Raw sequence
+    
     return input_query.replace(" ", "").replace("\n", "").upper()
 
 
@@ -75,19 +75,19 @@ def identify_sequence(seq: str):
 
     gc_content = gc_fraction(seq) * 100 if seq_type in ["DNA", "RNA"] else None
 
-    # BLAST Identification
+    
     program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
     database = "nt" if seq_type in ["DNA", "RNA"] else "nr"
     
     gene_matches = []
     
     try:
-        # Use NCBIWWW for stable XML retrieval
+        
         result_handle = NCBIWWW.qblast(
             program=program, 
             database=database, 
             sequence=seq,
-            hitlist_size=5  # Retrieve top 5 hits
+            hitlist_size=5  
         )
         blast_xml = result_handle.read()
         result_handle.close()
@@ -95,23 +95,23 @@ def identify_sequence(seq: str):
         root = ET.fromstring(blast_xml)
         query_len = float(root.find(".//BlastOutput_query-len").text) if root.find(".//BlastOutput_query-len") is not None else len(seq)
         
-        # Iterate over up to 5 Hits
+        
         for hit in root.findall(".//Hit")[:5]:
-            # Accession ID
+            
             accession_elem = hit.find("Hit_accession")
             accession_id = accession_elem.text if accession_elem is not None else "N/A"
             
-            # Title / Name
+            
             title_elem = hit.find("Hit_def")
             title = title_elem.text if title_elem is not None else "Unknown Gene"
             
-            # Extract sequence alignment info from the top HSP (High-scoring Segment Pair)
+            
             hsp = hit.find(".//Hsp")
             hit_gc = None
             pct_match = 0.0
             
             if hsp is not None:
-                # Calculate Match Percentage (Identity %)
+                
                 identity_elem = hsp.find("Hsp_identity")
                 align_len_elem = hsp.find("Hsp_align-len")
                 if identity_elem is not None and align_len_elem is not None:
@@ -119,7 +119,7 @@ def identify_sequence(seq: str):
                     align_len = float(align_len_elem.text)
                     pct_match = (identity / align_len) * 100 if align_len > 0 else 0.0
                 
-                # Calculate GC content of the target matched sequence
+                
                 hseq_elem = hsp.find("Hsp_hseq")
                 if hseq_elem is not None and hseq_elem.text and seq_type in ["DNA", "RNA"]:
                     target_seq = hseq_elem.text.upper().replace("-", "")
@@ -206,18 +206,47 @@ def predict_structure_esm(protein_seq: str):
         return res.text
     return None
 
+def color_protein_sequence_block(seq: str) -> str:
+    """Renders sequence with solid colored background blocks matching standard MSA/Clustal tools."""
+    
+    bg_colors = {
+        'A': '#80a0f0', 'I': '#80a0f0', 'L': '#80a0f0', 'M': '#80a0f0', 'F': '#80a0f0', 'W': '#80a0f0', 'V': '#80a0f0', # Blue: Hydrophobic
+        'R': '#f01505', 'K': '#f01505',                                                                               # Red: Basic / Positive
+        'N': '#00ff00', 'Q': '#00ff00',                                                                               # Green: Polar
+        'D': '#c000c0', 'E': '#c000c0',                                                                               # Pink/Magenta: Acidic / Negative
+        'C': '#f08080',                                                                                               # Pink-Red: Cysteine
+        'G': '#f09040',                                                                                               # Orange: Glycine
+        'P': '#ffff00',                                                                                               # Yellow: Proline
+        'H': '#15a4a4', 'Y': '#15a4a4',                                                                               # Cyan: Aromatic
+        'S': '#15a400', 'T': '#15a400'                                                                                # Dark Green: Hydroxylated
+    }
 
-# --- STREAMLIT USER INTERFACE ---
+    styled_html = "<div style='font-family: monospace; font-size: 15px; word-break: break-all; line-height: 2.0; background-color: #222; padding: 14px; border-radius: 6px; letter-spacing: 1px;'>"
+    
+    for aa in seq:
+        bg = bg_colors.get(aa, "#ffffff")
+       
+        text_color = "#ffffff" if aa in ['R', 'K', 'S', 'T', 'D', 'E'] else "#000000"
+        
+        styled_html += (
+            f"<span style='background-color: {bg}; color: {text_color}; "
+            f"font-weight: bold; padding: 2px 5px; margin: 1px 0px; "
+            f"display: inline-block; text-align: center; border-radius: 2px;'>{aa}</span>"
+        )
+        
+    styled_html += "</div>"
+    return styled_html
 
-st.title("🧬 Sequence to Structure Analysis Pipeline")
 
-# Sidebar Configuration
+st.title("Welcome to ProtCraft Wizard🧙‍♂️")
+
+
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input("NCBI Entrez Email", value="your.email@example.com")
 Entrez.email = user_email
 
-# User Input Section
-st.header("1. Input Sequence")
+
+st.header("1. Input Sequence🧬")
 input_option = st.radio("Choose Input Method:", ("Raw Sequence / Accession ID", "Upload FASTA File"))
 
 raw_input = ""
@@ -237,7 +266,7 @@ if st.button("Run Pipeline", type="primary"):
     else:
         st.success("Sequence successfully loaded!")
         
-        # --- Section 2: Sequence Identification & BLAST ---
+       
         st.header("2. Identification & BLAST Analysis")
         with st.spinner("Analyzing sequence type and querying BLAST..."):
             seq_type, gc_content, gene_matches = identify_sequence(sequence)
@@ -255,7 +284,7 @@ if st.button("Run Pipeline", type="primary"):
             else:
                 st.info("No significant BLAST hits found.")
 
-            # --- Section 3: Central Dogma Pipeline ---
+           
             st.header("3. Transcription & Translation")
             transcript, protein_seq = central_dogma_pipeline(sequence, seq_type)
             
@@ -264,9 +293,10 @@ if st.button("Run Pipeline", type="primary"):
                     st.text_area("RNA Sequence", transcript, height=100)
             
             with st.expander("View Translated Protein Sequence", expanded=True):
-                st.text_area("Protein Sequence", protein_seq, height=100)
+                st.markdown(color_protein_sequence(protein_seq), unsafe_allow_html=True)
+                st.caption("🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline")
 
-            # --- Section 4: Protein Analysis & PDB Matches ---
+            
             st.header("4. Protein Analysis")
             col_a, col_b = st.columns(2)
             
@@ -287,7 +317,7 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            # --- Section 5: Structure Prediction & 3D Visualization ---
+            
             st.header("5. 3D Structure Prediction")
             if len(protein_seq) > 400:
                 st.warning("Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to sequences ≤ 400 residues.")
@@ -298,7 +328,7 @@ if st.button("Run Pipeline", type="primary"):
                 if pdb_data:
                     st.success("3D Structure predicted successfully!")
                     
-                    # 3D Viewer Render
+                    
                     view = py3Dmol.view(width=800, height=500)
                     view.addModel(pdb_data, "pdb")
                     view.setStyle({'cartoon': {'color': 'spectrum'}})
@@ -306,7 +336,7 @@ if st.button("Run Pipeline", type="primary"):
                     st.subheader("Interactive 3D Structure Viewer")
                     showmol(view, height=500, width=800)
                     
-                    # Download Option
+                    
                     st.download_button(
                         label="Download PDB File",
                         data=pdb_data,
