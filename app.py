@@ -55,6 +55,7 @@ def fetch_sequence(input_query: str, uploaded_file) -> str:
 
 def identify_sequence(seq: str):
     """Determines sequence type, calculates GC content, and identifies gene via NCBI BLAST."""
+    seq = seq.strip().upper()
     seq_set = set(seq)
     dna_bases = set("ACGTN")
     rna_bases = set("ACGUN")
@@ -72,45 +73,93 @@ def identify_sequence(seq: str):
 
     gc_content = gc_fraction(seq) * 100 if seq_type in ["DNA", "RNA"] else None
 
-    # BLAST Identification
+    # BLAST Setup
     program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
     database = "nt" if seq_type in ["DNA", "RNA"] else "nr"
     base_url = "https://blast.ncbi.nlm.nih.gov/Blast.cgi"
     headers = {"User-Agent": "StructuredBioPipeline/1.0"}
     
     put_params = {
-        "CMD": "Put", "PROGRAM": program, "DATABASE": database,
-        "QUERY": seq, "HITLIST_SIZE": "1", "FORMAT_TYPE": "JSON2"
+        "CMD": "Put",
+        "PROGRAM": program,
+        "DATABASE": database,
+        "QUERY": seq,
+        "HITLIST_SIZE": "1"
     }
     
     gene_name = "Unknown Gene"
+    
     try:
-        res = requests.post(base_url, data=put_params, headers=headers)
+        # Step 1: Submit Job
+        res = requests.post(base_url, data=put_params, headers=headers, timeout=15)
+        res.raise_for_status()
+        
         rid = next((line.split("=")[1].strip() for line in res.text.split("\n") if "RID =" in line), None)
         
         if rid:
             with st.spinner("Waiting for NCBI BLAST alignment results..."):
-                while True:
+                max_retries = 15  # Cap polling at 60 seconds (15 x 4s)
+                attempts = 0
+                job_ready = False
+
+                # Step 2: Poll status
+                while attempts < max_retries:
                     time.sleep(4)
-                    status_res = requests.get(base_url, params={"CMD": "Get", "FORMAT_OBJECT": "SearchInfo", "RID": rid}, headers=headers)
+                    attempts += 1
+                    
+                    status_res = requests.get(
+                        base_url, 
+                        params={"CMD": "Get", "FORMAT_OBJECT": "SearchInfo", "RID": rid}, 
+                        headers=headers,
+                        timeout=15
+                    )
+                    
                     if "Status=READY" in status_res.text:
+                        job_ready = True
                         break
                     elif "Status=FAILED" in status_res.text:
-                        gene_name = "Unknown Gene (BLAST Failed)"
-                        break
-            
-            results_res = requests.get(base_url, params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "JSON2"}, headers=headers)
-            try:
-                data = results_res.json()
-                hits = data.get("BlastOutput2", {}).get("report", {}).get("results", {}).get("search", {}).get("hits", [])
-                gene_name = hits[0]["description"][0]["title"] if hits else "Unknown Gene (No hits found)"
-            except Exception:
-                gene_name = "Unknown Gene (NCBI API Error)"
+                        return seq_type, gc_content, "Unknown Gene (BLAST Search Failed)"
+                    elif "Status=UNKNOWN" in status_res.text:
+                        return seq_type, gc_content, "Unknown Gene (Expired RID)"
+
+            # Step 3: Fetch and Parse Results
+            if job_ready:
+                results_res = requests.get(
+                    base_url, 
+                    params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "JSON2"}, 
+                    headers=headers,
+                    timeout=15
+                )
+                
+                try:
+                    data = results_res.json()
+                    
+                    # Correct JSON2 schema traversal: BlastOutput2 is a LIST
+                    search_data = (
+                        data[0]
+                        .get("BlastOutput2", {})
+                        .get("report", {})
+                        .get("results", {})
+                        .get("search", {})
+                    )
+                    hits = search_data.get("hits", [])
+                    
+                    if hits:
+                        gene_name = hits[0]["description"][0].get("title", "Unknown Gene")
+                    else:
+                        gene_name = "No significant BLAST hits found"
+
+                except (ValueError, KeyError, IndexError, TypeError) as parse_err:
+                    gene_name = f"Unknown Gene (Parse Error: {parse_err})"
+            else:
+                gene_name = "Unknown Gene (BLAST Timed Out)"
         else:
             gene_name = "Unknown Gene (Failed to obtain RID)"
             
+    except requests.exceptions.RequestException as e:
+        gene_name = f"Unknown Gene (Network Error: {e})"
     except Exception as e:
-        gene_name = f"Unknown Gene (Connection Error: {e})"
+        gene_name = f"Unknown Gene ({e})"
 
     return seq_type, gc_content, gene_name
 
