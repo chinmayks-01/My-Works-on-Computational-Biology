@@ -124,14 +124,26 @@ def identify_sequence(seq: str):
 
             # Step 3: Fetch and Parse Results
             if job_ready:
+                time.sleep(2)
                 results_res = requests.get(
                     base_url, 
                     params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "JSON2"}, 
                     headers=headers,
                     timeout=15
                 )
-                
-                try:
+                if not results_res.text.strip():
+                    xml_res = requests.get(
+                        base_url,
+                        params={"CMD": "Get", "RID": rid, "FORMAT_TYPE": "XML"},
+                        headers=headers,
+                        timeout=15
+                    )
+                    if "<Hit_def>" in xml_res.text:
+                        gene_name = xml_res.text.split("<Hit_def>")[1].split("</Hit_def>")[0]
+                        else:
+                            gene_name = "No significant BLAST hits found"
+                else:
+                    try:
                     data = results_res.json()
                     
                     # Correct JSON2 schema traversal: BlastOutput2 is a LIST
