@@ -487,15 +487,14 @@ def central_dogma_pipeline(seq: str, seq_type: str):
     
     if seq_type == "DNA":
         transcript = str(bio_seq.transcribe())
-        protein = str(bio_seq.transcribe().translate(to_stop=True))
+        protein = str(bio_seq.translate())  # Removed to_stop=True
     elif seq_type == "RNA":
         transcript = seq
-        protein = str(bio_seq.translate(to_stop=True))
+        protein = str(bio_seq.translate())  # Removed to_stop=True
     else:
         protein = seq
 
     return transcript, protein
-
 
 def fetch_pdb_similar(protein_seq: str):
     """Fetches top 5 similar structures from RCSB PDB."""
