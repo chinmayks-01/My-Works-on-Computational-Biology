@@ -343,18 +343,41 @@ inject_custom_ui_theme()
 
 st.markdown(
     """
+    <style>
+    /* Keyframe animation for the breathing light behind the text */
+    @keyframes textGlowBreathing {
+        0% {
+            filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.3)) 
+                    drop-shadow(0px 0px 15px rgba(168, 85, 247, 0.2));
+        }
+        50% {
+            filter: drop-shadow(0px 0px 22px rgba(56, 189, 248, 0.85)) 
+                    drop-shadow(0px 0px 40px rgba(168, 85, 247, 0.7));
+        }
+        100% {
+            filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.3)) 
+                    drop-shadow(0px 0px 15px rgba(168, 85, 247, 0.2));
+        }
+    }
+
+    .glowing-title-text {
+        background: linear-gradient(90deg, #38bdf8 0%, #a855f7 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: textGlowBreathing 4s ease-in-out infinite;
+        display: inline-block;
+    }
+    </style>
+
     <h1 style='font-size: 2.8rem; font-weight: 800; margin-bottom: 1.2rem; color: #f8fafc;'>
         Welcome to 
-        <span style='background: linear-gradient(90deg, #38bdf8 0%, #a855f7 100%);
-                     -webkit-background-clip: text;
-                     -webkit-text-fill-color: transparent;'>
+        <span class='glowing-title-text'>
             ProtCraft Wizard
         </span> 🧙‍♂️
     </h1>
     """,
     unsafe_allow_html=True
 )
-
 
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input("NCBI Entrez Email", value="your.email@example.com")
