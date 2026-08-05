@@ -358,7 +358,7 @@ def central_dogma_pipeline(seq: str, seq_type: str):
     return None, seq
 
 
-def find_orfs(dna_seq: str, min_protein_length: int = 30):
+def find_orfs(dna_seq: str, min_protein_length: int = 15):
     orfs = []
     seq_obj = Seq(dna_seq)
     for strand, target_seq in [
@@ -786,22 +786,13 @@ if st.button("Run Pipeline", type="primary"):
                     "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
                 )
 
-            # --- ORF VIEWER & GRAPHICAL MAP INTEGRATION ---
+            # --- ORF DIAGRAM MAP INTEGRATION (WITHOUT SLIDER) ---
             st.header("Open Reading Frame (ORF) Diagram Map")
             if seq_type in ["DNA", "RNA"]:
                 dna_for_orf = sequence.replace("U", "T")
-                min_len = st.slider(
-                    "Minimum ORF Length (Amino Acids)",
-                    min_value=10,
-                    max_value=150,
-                    value=30,
-                    step=5,
-                )
 
                 with st.spinner("Scanning 6 reading frames for ORFs..."):
-                    orf_list = find_orfs(
-                        dna_for_orf, min_protein_length=min_len
-                    )
+                    orf_list = find_orfs(dna_for_orf, min_protein_length=15)
 
                 if orf_list:
                     render_orf_diagram(orf_list, len(dna_for_orf))
