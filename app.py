@@ -143,7 +143,7 @@ def fetch_pdb_similar(protein_seq: str):
                 "identity_cutoff": 0.3,
                 "target": "pdb_protein_sequence",
                 "value": protein_seq
-            },
+            }
         },
         "return_type": "polymer_entity",
         "request_options": {
@@ -155,14 +155,20 @@ def fetch_pdb_similar(protein_seq: str):
     pdb_matches = []
     
     try:
-       
         response = requests.post(url, json=query, timeout=15)
+        
+        # RCSB returns HTTP 204 when there are no matching results
+        if response.status_code == 204 or not response.text.strip():
+            return []
+            
         response.raise_for_status()
         
-        results = response.json().get("result_set", [])
+        # Safely parse JSON payload
+        data = response.json()
+        results = data.get("result_set", [])
+        
         for item in results:
             pdb_id = item["identifier"].split("_")[0]
-            
             score = item.get("score", 0.0)
             match_pct = score * 100 if score <= 1.0 else score
             
@@ -177,11 +183,12 @@ def fetch_pdb_similar(protein_seq: str):
         st.error("Unable to connect to RCSB PDB. Please check your network connection.")
     except requests.exceptions.HTTPError as err:
         st.error(f"RCSB PDB API returned an error: {err}")
+    except requests.exceptions.JSONDecodeError:
+        st.error("Received invalid JSON response from RCSB PDB API.")
     except Exception as e:
         st.error(f"An unexpected error occurred: {e}")
         
     return pdb_matches
-
 
 def analyze_amino_acids(protein_seq: str):
     """Calculates top 10 most frequent amino acids."""
