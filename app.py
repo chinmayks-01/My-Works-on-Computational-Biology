@@ -547,6 +547,26 @@ def predict_structure_esm(protein_seq: str):
         return res.text
     return None
 
+def predict_structure_colabfold(
+    sequence: str, api_url: str = "YOUR_COLABFOLD_API_ENDPOINT"
+):
+    """Sends sequence to ColabFold GPU backend and returns PDB string."""
+    try:
+        payload = {"sequence": sequence.strip()}
+        response = requests.post(
+            f"{api_url}/predict", json=payload, timeout=300
+        )
+
+        if response.status_code == 200:
+            res_json = response.json()
+            return res_json.get("pdb_data")
+        else:
+            st.error(f"ColabFold server error (Status {response.status_code})")
+            return None
+    except Exception as e:
+        st.error(f"Failed to connect to ColabFold service: {str(e)}")
+        return None
+
 def color_protein_sequence_block(seq: str) -> str:
     """Renders sequence with solid colored background blocks matching standard MSA/Clustal tools."""
     bg_colors = {
@@ -703,24 +723,52 @@ if st.button("Run Pipeline", type="primary"):
 
             
             st.header("5. Protein Structure Visualization")
-            if len(protein_seq) > 400:
-                st.warning("Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to sequences ≤ 400 residues.")
-            else:
-                with st.spinner("Predicting 3D structure using ESMFold..."):
-                    pdb_data = predict_structure_esm(protein_seq)
+            engine = st.radio(
+                "Select Prediction Engine:",
+                options=[
+                    "ESMFold (Ultra-Fast | <400 aa)",
+        "ColabFold / AlphaFold2 (High-Accuracy | Up to 1200 aa)",
+    ],
+    horizontal=True,
+)
 
-                if pdb_data:
-                    st.success("3D Structure predicted successfully!")
+pdb_data = None
 
-                    st.subheader("Interactive 3D Structure Viewer")
-                    render_protein_3d_viewer(pdb_input=pdb_data, is_pdb_id=False, height=500)
-                    
-                    
-                    st.download_button(
-                        label="Download PDB File",
-                        data=pdb_data,
-                        file_name="predicted_structure.pdb",
-                        mime="chemical/x-pdb"
-                    )
-                else:
-                    st.error("Failed to predict 3D structure using ESMFold API.")
+if "ESMFold" in engine:
+    if len(protein_seq) > 400:
+        st.warning(
+            "Protein length exceeds 400 amino acids. ESMFold API predictions are restricted to shorter sequences."
+        )
+    else:
+        with st.spinner("Predicting 3D structure using ESMFold..."):
+            pdb_data = predict_structure_esm(protein_seq)
+else:
+    with st.spinner(
+        "Generating MSAs and predicting structure using ColabFold (1–3 mins)..."
+    ):
+        # Update this with your active ColabFold GPU endpoint URL
+        COLABFOLD_API = "https://your-backend-endpoint.ngrok-free.app"
+        pdb_data = predict_structure_colabfold(
+            protein_seq, api_url=COLABFOLD_API
+        )
+
+# Render viewer and download button
+if pdb_data:
+    st.success("3D Structure predicted successfully!")
+
+    st.subheader("Interactive 3D Structure Viewer")
+    render_protein_3d_viewer(pdb_input=pdb_data, is_pdb_id=False, height=500)
+
+    st.download_button(
+        label="Download PDB File",
+        data=pdb_data,
+        file_name="predicted_structure.pdb",
+        mime="chemical/x-pdb",
+    )
+elif "ESMFold" in engine and len(protein_seq) <= 400:
+    st.error("Failed to predict 3D structure using ESMFold API.")
+elif "ColabFold" in engine:
+    st.error(
+        "Failed to predict 3D structure using ColabFold API. Check backend connection."
+    )
+                
