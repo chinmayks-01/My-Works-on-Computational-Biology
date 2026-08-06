@@ -1,8 +1,11 @@
+import base64
 from collections import Counter
 import io
+import os
 import time
 import urllib.parse
 import xml.etree.ElementTree as ET
+from textwrap import dedent
 
 from Bio import Entrez, SeqIO
 from Bio.Blast import NCBIWWW
@@ -174,13 +177,9 @@ def inject_custom_ui_theme():
 
 
 def render_protein_3d_viewer(pdb_data: str, height: int = 480):
-    """Renders raw PDB/CIF text content safely into 3Dmol.js."""
-    escaped_pdb = (
-        pdb_data.replace("\\", "\\\\")
-        .replace("`", "\\`")
-        .replace("${", "\\${")
-        .replace("\n", "\\n")
-    )
+    """Renders raw PDB/CIF text content safely into 3Dmol.js using Base64 encoding."""
+    # Base64 encode the string to safely bypass all HTML/JS quoting issues
+    b64_pdb = base64.b64encode(pdb_data.encode('utf-8')).decode('utf-8')
 
     html_code = f"""
     <!DOCTYPE html>
@@ -222,12 +221,17 @@ def render_protein_3d_viewer(pdb_data: str, height: int = 480):
         <script>
             let viewer = null;
             document.addEventListener("DOMContentLoaded", function() {{
-                viewer = $3Dmol.createViewer(document.getElementById('viewport'), {{backgroundColor: '0x000000', backgroundAlpha: 0.0}});
-                let pdbData = `{escaped_pdb}`;
-                viewer.addModel(pdbData, "pdb");
-                viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
-                viewer.zoomTo(); 
-                viewer.render();
+                try {{
+                    viewer = $3Dmol.createViewer(document.getElementById('viewport'), {{backgroundColor: '0x000000', backgroundAlpha: 0.0}});
+                    // Safely decode the Base64 PDB string
+                    let pdbData = atob("{b64_pdb}");
+                    viewer.addModel(pdbData, "pdb");
+                    viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
+                    viewer.zoomTo(); 
+                    viewer.render();
+                }} catch (error) {{
+                    console.error("Error rendering 3Dmol:", error);
+                }}
             }});
             function setStyle(type) {{
                 if (!viewer) return;
@@ -849,7 +853,7 @@ if st.button("Run Pipeline", type="primary"):
                         try:
                             headers = {"Authorization": f"Token {swiss_token}"}
                             
-                            # Clean the sequence to prevent 400 errors (remove stop codons and whitespace)
+                            # Clean the sequence to prevent 400 errors (remove stop codons, whitespace)
                             clean_protein_seq = protein_seq.replace("*", "").strip()
                             
                             data = {
@@ -860,53 +864,54 @@ if st.button("Run Pipeline", type="primary"):
                             
                             if res.status_code in [200, 201, 202]:
                                 project_id = res.json().get("project_id")
+                                status = res.json().get("status", "QUEUED")
                                 
                                 status_placeholder = st.empty()
-                                poll_data = {}
                                 
-                                # Poll the specific project ID using the /models/summary/ endpoint
-                                while True:
-                                    poll_url = f"https://swissmodel.expasy.org/project/{project_id}/models/summary/"
-                                    poll_req = requests.get(poll_url, headers=headers)
+                                # Poll the main project endpoint to check status
+                                while status in ["RUNNING", "PENDING", "QUEUED"]:
+                                    status_placeholder.info(f"SWISS-MODEL API Status: {status}... Polling server (Please wait).")
+                                    time.sleep(10)
                                     
+                                    poll_req = requests.get(f"https://swissmodel.expasy.org/project/{project_id}/", headers=headers)
                                     if poll_req.status_code == 200:
-                                        poll_data = poll_req.json()
-                                        status = poll_data.get("status", "UNKNOWN")
-                                        status_placeholder.info(f"SWISS-MODEL API Status: {status}... Polling server (Please wait).")
-                                        
-                                        # Break loop if it's finished or crashed
-                                        if status in ["COMPLETED", "FAILED"]:
-                                            break
-                                            
-                                        # Wait 10 seconds before polling again
-                                        time.sleep(10)
+                                        status = poll_req.json().get("status", "UNKNOWN")
                                     else:
                                         status = "API_ERROR"
-                                        st.error(f"Polling endpoint returned an error: Code {poll_req.status_code} - {poll_req.text}")
                                         break
                                 
                                 status_placeholder.empty()
                                 
+                                # Process the result based on final status
                                 if status == "COMPLETED":
-                                    models = poll_data.get("models", [])
-                                    if models:
-                                        st.success("Homology model successfully generated!")
-                                        
-                                        # Retrieve the exact PDB coordinates download URL
-                                        pdb_url = models[0].get("coordinates_url") 
-                                        if not pdb_url:
-                                            # Fallback download path
-                                            pdb_url = f"https://swissmodel.expasy.org/project/{project_id}/models/01.pdb"
+                                    models_req = requests.get(f"https://swissmodel.expasy.org/project/{project_id}/models/summary/", headers=headers)
+                                    if models_req.status_code == 200:
+                                        models = models_req.json().get("models", [])
+                                        if models:
+                                            st.success("Homology model successfully generated!")
                                             
-                                        pdb_res = requests.get(pdb_url, headers=headers)
-                                        if pdb_res.status_code == 200:
-                                            render_protein_3d_viewer(pdb_res.text, height=500)
+                                            pdb_url = models[0].get("coordinates_url") 
+                                            if not pdb_url:
+                                                pdb_url = f"https://swissmodel.expasy.org/project/{project_id}/models/01.pdb"
+                                                
+                                            pdb_res = requests.get(pdb_url, headers=headers)
+                                            if pdb_res.status_code == 200:
+                                                pdb_text = pdb_res.text
+                                                if "ATOM" in pdb_text or "HEADER" in pdb_text:
+                                                    render_protein_3d_viewer(pdb_text, height=500)
+                                                else:
+                                                    st.error("SWISS-MODEL returned an invalid file (not a PDB).")
+                                                    st.code(pdb_text[:500])
+                                            else:
+                                                st.error("Failed to download the generated PDB coordinate file.")
                                         else:
-                                            st.error(f"Failed to download the generated PDB coordinate file. Status code: {pdb_res.status_code}")
+                                            st.error("SWISS-MODEL job finished, but no suitable template was found to generate a valid model.")
                                     else:
-                                        st.error("SWISS-MODEL job finished, but no suitable template was found to generate a valid model.")
-                                elif status == "FAILED":
-                                    st.error("SWISS-MODEL job failed during modeling.")
+                                        st.error("Failed to retrieve models after completion.")
+                                elif status in ["FAILED", "UNKNOWN", "API_ERROR"]:
+                                    st.error(f"SWISS-MODEL job stopped with status: {status}")
+                                else:
+                                    st.error(f"Unexpected status: {status}")
                             else:
                                 st.error(f"Failed to submit job. Please check your API Token and sequence. (Status Code: {res.status_code})\n\n{res.text}")
                         except Exception as e:
