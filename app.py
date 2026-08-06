@@ -16,7 +16,11 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 
-st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
+st.set_page_config(
+    page_title="ProtCraft Wizard | Bioinformatics Suite", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
 
 AA_NAMES = {
@@ -44,9 +48,20 @@ AA_NAMES = {
 
 
 def inject_custom_ui_theme():
-    """Injects dynamic breathing background, glassmorphism UI, and equal-sized side-by-side radio cards."""
+    """Injects dynamic breathing background, luxury glassmorphism UI, and custom interactive cards."""
     css = """
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    /* Global Typography & Font Overrides */
+    html, body, [class*="st-"] {
+        font-family: 'Inter', sans-serif !important;
+    }
+
+    code, pre, .stDataFrame {
+        font-family: 'JetBrains Mono', monospace !important;
+    }
+
     @keyframes breathingGradient {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
@@ -54,81 +69,87 @@ def inject_custom_ui_theme():
     }
 
     .stApp {
-        background: linear-gradient(-45deg, #000000, #0a0a0c, #050811, #000000);
+        background: linear-gradient(-45deg, #030712, #090d16, #050811, #020408);
         background-size: 400% 400%;
-        animation: breathingGradient 18s ease infinite;
-        color: #f8fafc;
+        animation: breathingGradient 22s ease infinite;
+        color: #f1f5f9;
     }
 
     @keyframes lightSweep {
-        0% { opacity: 0.2; transform: scale(1); }
-        50% { opacity: 0.6; transform: scale(1.15); }
-        100% { opacity: 0.2; transform: scale(1); }
+        0% { opacity: 0.15; transform: scale(1) rotate(0deg); }
+        50% { opacity: 0.45; transform: scale(1.2) rotate(3deg); }
+        100% { opacity: 0.15; transform: scale(1) rotate(0deg); }
     }
 
     .stApp::after {
         content: "";
         position: fixed;
-        top: -20%; left: -20%; width: 140%; height: 140%;
-        background: linear-gradient(
-            125deg, 
-            transparent 15%, 
-            rgba(56, 189, 248, 0.12) 35%, 
-            rgba(37, 99, 235, 0.22) 50%, 
-            rgba(56, 189, 248, 0.12) 65%, 
-            transparent 85%
-        );
-        background-size: 200% 200%;
-        filter: blur(100px);
+        top: -30%; left: -30%; width: 160%; height: 160%;
+        background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.08), rgba(37, 99, 235, 0.12) 40%, transparent 70%);
+        filter: blur(120px);
         pointer-events: none;
         z-index: 0;
-        animation: lightSweep 14s ease-in-out infinite alternate;
+        animation: lightSweep 18s ease-in-out infinite alternate;
     }
 
     .block-container {
         position: relative;
         z-index: 1;
+        padding-top: 2.5rem;
+        padding-bottom: 3rem;
     }
 
-    div[data-testid="stExpander"], div[data-testid="stMetric"] {
-        background: rgba(255, 255, 255, 0.02) !important;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        border-radius: 12px !important;
-        padding: 10px !important;
+    /* Glassmorphic Cards & Containers */
+    div[data-testid="stExpander"], div[data-testid="stMetric"], div[data-testid="df-container"] {
+        background: rgba(255, 255, 255, 0.015) !important;
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+        border-radius: 16px !important;
+        padding: 16px !important;
+        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
         position: relative;
         z-index: 2;
+        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    div[data-testid="stExpander"]:hover {
+        border-color: rgba(56, 189, 248, 0.25) !important;
+        box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.08);
     }
 
     h1, h2, h3 {
-        color: #f1f5f9 !important;
+        color: #f8fafc !important;
         font-weight: 700 !important;
-        letter-spacing: -0.02em;
+        letter-spacing: -0.03em;
     }
 
+    /* Modernized Primary Buttons */
     .stButton > button {
-        background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+        background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important;
         color: #ffffff !important;
-        border: none !important;
-        border-radius: 8px !important;
-        padding: 0.6rem 1.5rem !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border-radius: 12px !important;
+        padding: 0.7rem 1.8rem !important;
         font-weight: 600 !important;
-        transition: all 0.3s ease !important;
-        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        letter-spacing: 0.01em;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        box-shadow: 0 4px 20px rgba(14, 165, 233, 0.35);
         position: relative;
         z-index: 2;
     }
 
     .stButton > button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+        box-shadow: 0 8px 25px rgba(14, 165, 233, 0.55);
+        border-color: rgba(255, 255, 255, 0.3) !important;
     }
 
+    /* Sidebar Styling */
     section[data-testid="stSidebar"] {
-        background-color: rgba(10, 10, 12, 0.85) !important;
-        backdrop-filter: blur(16px);
-        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        background-color: rgba(6, 8, 14, 0.9) !important;
+        backdrop-filter: blur(20px);
+        border-right: 1px solid rgba(255, 255, 255, 0.06);
         z-index: 10;
     }
     
@@ -136,6 +157,7 @@ def inject_custom_ui_theme():
         background: transparent !important;
     }
 
+    /* Sleek Radio Navigation Cards */
     div[data-testid="stRadio"] div[role="radiogroup"] {
         display: flex !important;
         flex-direction: row !important;
@@ -146,29 +168,42 @@ def inject_custom_ui_theme():
 
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         flex: 1 1 0px !important;
-        min-height: 72px !important;
-        background: rgba(255, 255, 255, 0.03) !important;
-        backdrop-filter: blur(10px) !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-radius: 10px !important;
-        padding: 12px 20px !important;
-        transition: all 0.3s ease !important;
+        min-height: 76px !important;
+        background: rgba(255, 255, 255, 0.02) !important;
+        backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 14px !important;
+        padding: 14px 20px !important;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
         cursor: pointer !important;
         display: flex !important;
         align-items: center !important;
         justify-content: flex-start !important;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
     }
 
     div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
-        background: rgba(56, 189, 248, 0.08) !important;
-        border-color: rgba(56, 189, 248, 0.4) !important;
-        transform: translateY(-1px);
+        background: rgba(56, 189, 248, 0.06) !important;
+        border-color: rgba(56, 189, 248, 0.35) !important;
+        transform: translateY(-2px);
     }
 
     div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-        background: rgba(56, 189, 248, 0.12) !important;
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%) !important;
         border-color: #38bdf8 !important;
-        box-shadow: 0 0 15px rgba(56, 189, 248, 0.2) !important;
+        box-shadow: 0 0 20px rgba(56, 189, 248, 0.25) !important;
+    }
+
+    /* Text Inputs & Text Areas Glass Fix */
+    textarea, input {
+        background-color: rgba(255, 255, 255, 0.02) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        color: #f8fafc !important;
+        border-radius: 12px !important;
+    }
+    textarea:focus, input:focus {
+        border-color: #38bdf8 !important;
+        box-shadow: 0 0 10px rgba(56, 189, 248, 0.2) !important;
     }
     </style>
     """
@@ -176,7 +211,7 @@ def inject_custom_ui_theme():
 
 
 def render_protein_3d_viewer(pdb_data: str, height: int = 480):
-    """Renders raw PDB/CIF text content safely into 3Dmol.js."""
+    """Renders raw PDB/CIF text content safely into 3Dmol.js with a modern dark container wrapper."""
     escaped_pdb = (
         pdb_data.replace("\\", "\\\\")
         .replace("`", "\\`")
@@ -192,23 +227,28 @@ def render_protein_3d_viewer(pdb_data: str, height: int = 480):
         <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
         <style>
             * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: -apple-system, sans-serif; }}
+            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: 'Inter', sans-serif; }}
             .viewer-wrapper {{
                 position: relative; width: 100%; height: {height}px;
-                background: rgba(10, 10, 12, 0.6); backdrop-filter: blur(12px);
-                border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; overflow: hidden;
+                background: linear-gradient(180deg, rgba(10, 12, 18, 0.8) 0%, rgba(5, 7, 11, 0.95) 100%);
+                backdrop-filter: blur(16px);
+                border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; overflow: hidden;
+                box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
             }}
             #viewport {{ width: 100%; height: 100%; touch-action: none; }}
             .controls-bar {{
-                position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-                display: flex; gap: 6px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px);
-                padding: 6px 12px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 10;
+                position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
+                display: flex; gap: 8px; background: rgba(3, 7, 18, 0.85); backdrop-filter: blur(12px);
+                padding: 6px 14px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.12); z-index: 10;
+                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
             }}
             .control-btn {{
-                background: rgba(255, 255, 255, 0.08); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 20px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
+                background: rgba(255, 255, 255, 0.05); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.08);
+                border-radius: 20px; padding: 6px 14px; font-size: 11px; font-weight: 600; cursor: pointer;
+                transition: all 0.2s ease;
             }}
-            .control-btn:active, .control-btn.active {{ background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; color: #38bdf8; }}
+            .control-btn:hover {{ background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }}
+            .control-btn:active, .control-btn.active {{ background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; color: #38bdf8; box-shadow: 0 0 10px rgba(56,189,248,0.3); }}
         </style>
     </head>
     <body>
@@ -244,7 +284,7 @@ def render_protein_3d_viewer(pdb_data: str, height: int = 480):
     </body>
     </html>
     """
-    components.html(html_code, height=height + 10, scrolling=False)
+    components.html(html_code, height=height + 14, scrolling=False)
 
 
 def fetch_sequence(input_query: str, uploaded_file) -> str:
@@ -432,19 +472,19 @@ def render_orf_diagram(orfs, total_seq_len):
     }
 
     html = f"""
-    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; font-family: monospace;">
-        <div style="font-size: 13px; color: #94a3b8; margin-bottom: 12px; display: flex; justify-content: space-between;">
-            <span><b>6-Frame ORF Graphic Map</b></span>
-            <span>Total Length: {total_seq_len} nt</span>
+    <div style="background: rgba(10, 14, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 22px; font-family: 'JetBrains Mono', monospace; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
+        <div style="font-size: 13px; color: #94a3b8; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #f1f5f9; font-weight: 600;"><b>6-Frame ORF Graphic Map</b></span>
+            <span style="background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 4px 10px; border-radius: 20px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.2);">Total Length: {total_seq_len} nt</span>
         </div>
         <div style="position: relative; width: 100%;">
     """
 
     for f in frames:
         html += f"""
-        <div style="display: flex; align-items: center; margin-bottom: 8px;">
-            <div style="width: 80px; font-size: 11px; color: #cbd5e1; font-weight: bold;">{f}</div>
-            <div style="position: relative; flex-grow: 1; height: 16px; background: rgba(255,255,255,0.04); border-radius: 4px; border: 1px solid rgba(255,255,255,0.06);">
+        <div style="display: flex; align-items: center; margin-bottom: 10px;">
+            <div style="width: 85px; font-size: 11px; color: #cbd5e1; font-weight: 600;">{f}</div>
+            <div style="position: relative; flex-grow: 1; height: 18px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px solid rgba(255,255,255,0.05);">
         """
 
         frame_orfs = [o for o in orfs if o["Frame"] == f]
@@ -462,7 +502,7 @@ def render_orf_diagram(orfs, total_seq_len):
 
             html += f"""
             <div title="ORF: {orf['Start (nt)']} - {orf['End (nt)']} nt ({orf['Length (aa)']} aa)" 
-                 style="position: absolute; left: {left_pct}%; width: {width_pct}%; height: 100%; background: {color}; opacity: 0.85; border-radius: 3px; cursor: pointer; box-shadow: 0 0 8px {color};">
+                 style="position: absolute; left: {left_pct}%; width: {width_pct}%; height: 100%; background: {color}; opacity: 0.9; border-radius: 4px; cursor: pointer; box-shadow: 0 0 12px {color};">
             </div>
             """
 
@@ -473,13 +513,13 @@ def render_orf_diagram(orfs, total_seq_len):
 
     html += """
         </div>
-        <div style="display: flex; gap: 15px; font-size: 11px; color: #94a3b8; margin-top: 15px; justify-content: flex-end;">
-            <span style="display: flex; align-items: center; gap: 5px;"><span style="width:10px; height:10px; background:#38bdf8; display:inline-block; border-radius:2px;"></span> + Frames</span>
-            <span style="display: flex; align-items: center; gap: 5px;"><span style="width:10px; height:10px; background:#f43f5e; display:inline-block; border-radius:2px;"></span> - Frames</span>
+        <div style="display: flex; gap: 18px; font-size: 11px; color: #94a3b8; margin-top: 18px; justify-content: flex-end;">
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width:10px; height:10px; background:#38bdf8; display:inline-block; border-radius:3px; box-shadow: 0 0 8px #38bdf8;"></span> + Frames</span>
+            <span style="display: flex; align-items: center; gap: 6px;"><span style="width:10px; height:10px; background:#f43f5e; display:inline-block; border-radius:3px; box-shadow: 0 0 8px #f43f5e;"></span> - Frames</span>
         </div>
     </div>
     """
-    components.html(html, height=260, scrolling=False)
+    components.html(html, height=270, scrolling=False)
 
 
 def fetch_pdb_similar(protein_seq: str):
@@ -538,34 +578,21 @@ def analyze_amino_acids(protein_seq: str):
 
 def color_protein_sequence_block(seq: str) -> str:
     bg_colors = {
-        "A": "#80a0f0",
-        "I": "#80a0f0",
-        "L": "#80a0f0",
-        "M": "#80a0f0",
-        "F": "#80a0f0",
-        "W": "#80a0f0",
-        "V": "#80a0f0",
-        "R": "#f01505",
-        "K": "#f01505",
-        "N": "#00ff00",
-        "Q": "#00ff00",
-        "D": "#c000c0",
-        "E": "#c000c0",
-        "C": "#f08080",
-        "G": "#f09040",
-        "P": "#ffff00",
-        "H": "#15a4a4",
-        "Y": "#15a4a4",
-        "S": "#15a400",
-        "T": "#15a400",
+        "A": "#38bdf8", "I": "#38bdf8", "L": "#38bdf8", "M": "#38bdf8", "F": "#38bdf8", "W": "#38bdf8", "V": "#38bdf8",
+        "R": "#f43f5e", "K": "#f43f5e",
+        "N": "#22c55e", "Q": "#22c55e",
+        "D": "#c084fc", "E": "#c084fc",
+        "C": "#fb923c",
+        "G": "#facc15",
+        "P": "#e879f9",
+        "H": "#2dd4bf", "Y": "#2dd4bf",
+        "S": "#4ade80", "T": "#4ade80",
     }
-    styled_html = "<div style='font-family: monospace; font-size: 15px; word-break: break-all; line-height: 2.0; background-color: #222; padding: 14px; border-radius: 6px; letter-spacing: 1px;'>"
+    styled_html = "<div style='font-family: \"JetBrains Mono\", monospace; font-size: 14px; word-break: break-all; line-height: 2.2; background: rgba(3, 7, 18, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); padding: 18px; border-radius: 14px; letter-spacing: 1.5px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);'>"
     for aa in seq:
-        bg = bg_colors.get(aa, "#ffffff")
-        text_color = (
-            "#ffffff" if aa in ["R", "K", "S", "T", "D", "E"] else "#000000"
-        )
-        styled_html += f"<span style='background-color: {bg}; color: {text_color}; font-weight: bold; padding: 2px 5px; margin: 1px 0px; display: inline-block; text-align: center; border-radius: 2px;'>{aa}</span>"
+        bg = bg_colors.get(aa, "#334155")
+        text_color = "#030712" if aa in ["A", "I", "L", "M", "F", "W", "V", "N", "Q", "C", "G", "P", "H", "Y", "S", "T"] else "#ffffff"
+        styled_html += f"<span style='background-color: {bg}; color: {text_color}; font-weight: 700; padding: 3px 6px; margin: 2px 1px; display: inline-block; text-align: center; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);'>{aa}</span>"
     styled_html += "</div>"
     return styled_html
 
@@ -575,77 +602,78 @@ inject_custom_ui_theme()
 st.markdown(
     """<style>
 .header-container {
-display: flex;
-flex-direction: row;
-justify-content: space-between;
-align-items: flex-start;
-width: 100%;
-margin-bottom: 1.5rem;
-position: relative;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 2rem;
+    position: relative;
 }
 @keyframes titleTextGlow {
-0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
-50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
-100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+    0% { filter: drop-shadow(0px 0px 10px rgba(56, 189, 248, 0.4)); }
+    50% { filter: drop-shadow(0px 0px 28px rgba(56, 189, 248, 0.9)); }
+    100% { filter: drop-shadow(0px 0px 10px rgba(56, 189, 248, 0.4)); }
 }
 .title-glow-text {
-background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
--webkit-background-clip: text;
--webkit-text-fill-color: transparent;
-animation: titleTextGlow 4s ease-in-out infinite;
-display: inline-block;
+    background: linear-gradient(135deg, #38bdf8 0%, #60a5fa 50%, #2563eb 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: titleTextGlow 4s ease-in-out infinite;
+    display: inline-block;
 }
 
 .central-dogma-anim-vertical {
-position: absolute;
-top: -10px;
-right: 15px;
-width: 100px;  
-height: 320px; 
-overflow: visible;
-z-index: 100;
+    position: absolute;
+    top: -15px;
+    right: 15px;
+    width: 100px;  
+    height: 320px; 
+    overflow: visible;
+    z-index: 100;
 }
 
 @keyframes spinDna {
-0% { transform: scaleX(1); }
-50% { transform: scaleX(-0.85); filter: drop-shadow(0 0 10px #38bdf8); }
-100% { transform: scaleX(1); }
+    0% { transform: scaleX(1); }
+    50% { transform: scaleX(-0.85); filter: drop-shadow(0 0 12px #38bdf8); }
+    100% { transform: scaleX(1); }
 }
 .dna-layer {
-transform-origin: 60px 80px;
-animation: spinDna 5s linear infinite;
+    transform-origin: 60px 80px;
+    animation: spinDna 5s linear infinite;
 }
 
 @keyframes swayRna {
-0%, 100% { transform: translateX(0px); }
-50% { transform: translateX(3px); }
+    0%, 100% { transform: translateX(0px); }
+    50% { transform: translateX(4px); }
 }
 .rna-strand {
-animation: swayRna 3s ease-in-out infinite;
+    animation: swayRna 3s ease-in-out infinite;
 }
 
 @keyframes pulseProtein {
-0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.5)); }
-50% { transform: scale(1.08) rotate(3deg); filter: drop-shadow(0 0 15px rgba(192, 132, 252, 1)); }
+    0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.6)); }
+    50% { transform: scale(1.1) rotate(4deg); filter: drop-shadow(0 0 18px rgba(192, 132, 252, 1)); }
 }
 .protein-cluster {
-transform-origin: 60px 345px;
-animation: pulseProtein 3.5s ease-in-out infinite;
+    transform-origin: 60px 345px;
+    animation: pulseProtein 3.5s ease-in-out infinite;
 }
 
 @keyframes processArrow {
-0%, 100% { opacity: 0.3; }
-50% { opacity: 1; filter: drop-shadow(0 0 6px white); }
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; filter: drop-shadow(0 0 8px #38bdf8); }
 }
 .process-arrow {
-animation: processArrow 2s infinite;
+    animation: processArrow 2s infinite;
 }
 </style>
 <div class="header-container">
 <div style="flex: 1; min-width: 320px;">
-<h1 style='font-size: 2.8rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
-Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
-</h1>
+    <h1 style='font-size: 3rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
+        ProtCraft <span class='title-glow-text'>Wizard</span> 🧙‍♂️
+    </h1>
+    <p style="color: #94a3b8; font-size: 1.05rem; margin-top: 8px; font-weight: 400;">Next-Gen Bioinformatics Sequence Pipeline & Structure Analysis Suite</p>
 </div>
 <div style="flex-shrink: 0; text-align: right;">
 <svg class="central-dogma-anim-vertical" viewBox="0 0 120 400" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -693,7 +721,7 @@ Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
     unsafe_allow_html=True,
 )
 
-st.sidebar.header("Settings")
+st.sidebar.header("Pipeline Settings")
 user_email = st.sidebar.text_input(
     "NCBI Entrez Email", value="your.email@example.com"
 )
@@ -701,7 +729,7 @@ Entrez.email = user_email
 
 st.header("Input Sequence")
 st.markdown(
-    "<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>",
+    "<p style='font-size: 0.95rem; font-weight: 500; margin-bottom: 0.6rem; color: #cbd5e1;'>Choose Input Method:</p>",
     unsafe_allow_html=True,
 )
 
@@ -726,6 +754,8 @@ else:
     uploaded_file = st.file_uploader(
         "Upload FASTA file", type=["fasta", "fas", "fa"]
     )
+
+st.markdown("<div style='margin-top: 1rem;'></div>", unsafe_allow_html=True)
 
 if st.button("Run Pipeline", type="primary"):
     with st.spinner("Processing input sequence..."):
