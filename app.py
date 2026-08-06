@@ -851,9 +851,11 @@ if st.button("Run Pipeline", type="primary"):
                         try:
                             headers = {"Authorization": f"Token {swiss_token}"}
                             
-                            # The correct POST endpoint is /automodel, NOT /project/
+                            # Stripping out the stop codon (*) to prevent invalid sequence characters
+                            clean_protein_seq = protein_seq.replace("*", "")
+                            
                             data = {
-                                "target_sequences": [protein_seq], 
+                                "target_sequences": [clean_protein_seq], 
                                 "project_title": "ProtCraft Automated Job"
                             }
                             res = requests.post("https://swissmodel.expasy.org/automodel", headers=headers, json=data)
