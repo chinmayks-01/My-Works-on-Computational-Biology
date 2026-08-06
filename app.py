@@ -2,6 +2,7 @@ from collections import Counter
 import io
 import os
 import time
+import urllib.parse
 import xml.etree.ElementTree as ET
 from textwrap import dedent
 
@@ -849,32 +850,56 @@ if st.button("Run Pipeline", type="primary"):
                     with st.spinner("Submitting sequence to SWISS-MODEL and generating homology model (this may take a few minutes)..."):
                         try:
                             headers = {"Authorization": f"Token {swiss_token}"}
-                            data = {"target_sequences": protein_seq, "project_title": "ProtCraft_Automated_Job"}
-                            res = requests.post("https://swissmodel.expasy.org/project/", headers=headers, json=data)
+                            
+                            # The correct POST endpoint is /automodel, NOT /project/
+                            data = {
+                                "target_sequences": [protein_seq], 
+                                "project_title": "ProtCraft Automated Job"
+                            }
+                            res = requests.post("https://swissmodel.expasy.org/automodel", headers=headers, json=data)
                             
                             if res.status_code in [200, 201, 202]:
-                                proj_url = res.json().get("url")
-                                status = "RUNNING"
+                                project_id = res.json().get("project_id")
+                                status = res.json().get("status", "QUEUED")
                                 
                                 status_placeholder = st.empty()
-                                # Polling loop
+                                
+                                # Polling the specific project ID using the /models/summary/ endpoint
                                 while status in ["RUNNING", "PENDING", "QUEUED"]:
-                                    status_placeholder.info(f"SWISS-MODEL API Status: {status}... Polling server.")
-                                    time.sleep(10) # check every 10 seconds
-                                    req = requests.get(proj_url, headers=headers).json()
-                                    status = req.get("status", "UNKNOWN")
+                                    status_placeholder.info(f"SWISS-MODEL API Status: {status}... Polling server (Please wait).")
+                                    time.sleep(10)
+                                    
+                                    req = requests.get(f"https://swissmodel.expasy.org/project/{project_id}/models/summary/", headers=headers)
+                                    if req.status_code == 200:
+                                        status = req.json().get("status", "UNKNOWN")
+                                    else:
+                                        break
                                 
                                 status_placeholder.empty()
                                 
-                                if status == "COMPLETED" and req.get("models"):
-                                    st.success("Homology model successfully generated!")
-                                    pdb_url = req["models"][0]["coordinates_url"]
-                                    pdb_text = requests.get(pdb_url, headers=headers).text
-                                    render_protein_3d_viewer(pdb_text, height=500)
-                                else:
-                                    st.error("SWISS-MODEL job finished, but no suitable template was found to generate a valid model.")
+                                if status == "COMPLETED":
+                                    req_json = req.json()
+                                    models = req_json.get("models", [])
+                                    if models:
+                                        st.success("Homology model successfully generated!")
+                                        
+                                        # Retrieve the exact PDB coordinates download URL
+                                        pdb_url = models[0].get("coordinates_url") 
+                                        if not pdb_url:
+                                            # Fallback download path
+                                            pdb_url = f"https://swissmodel.expasy.org/project/{project_id}/models/01.pdb"
+                                            
+                                        pdb_res = requests.get(pdb_url, headers=headers)
+                                        if pdb_res.status_code == 200:
+                                            render_protein_3d_viewer(pdb_res.text, height=500)
+                                        else:
+                                            st.error("Failed to download the generated PDB coordinate file.")
+                                    else:
+                                        st.error("SWISS-MODEL job finished, but no suitable template was found to generate a valid model.")
+                                elif status in ["FAILED", "UNKNOWN"]:
+                                    st.error(f"SWISS-MODEL job stopped with status: {status}")
                             else:
-                                st.error(f"Failed to submit job. Please check your API Token and sequence. (Status Code: {res.status_code})")
+                                st.error(f"Failed to submit job. Please check your API Token and sequence. (Status Code: {res.status_code})\n\n{res.text}")
                         except Exception as e:
                             st.error(f"Failed to connect to SWISS-MODEL API: {e}")
             else:
