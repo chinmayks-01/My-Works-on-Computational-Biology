@@ -17,15 +17,24 @@ def inject_theme():
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
     
-    /* Scoped font-family to avoid breaking Streamlit's internal Material Icons (fixes the file uploader glitch) */
     h1, h2, h3, p, label, span { font-family: 'Inter', sans-serif; }
     code, pre { font-family: 'JetBrains Mono', monospace !important; }
     
-    /* Hide top-left text artifacts and default header */
     header[data-testid="stHeader"], [data-testid="collapsedControl"] { display: none !important; }
     section[data-testid="stSidebar"] { display: none !important; }
 
-    /* Animated Rotating DNA-like Blurry Background */
+    /* The Missing Glow Animation */
+    @keyframes titleTextGlow {
+        0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.4)); }
+        50% { filter: drop-shadow(0px 0px 25px rgba(56, 189, 248, 0.95)); }
+        100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.4)); }
+    }
+    .title-glow {
+        color: #38bdf8;
+        animation: titleTextGlow 3.5s ease-in-out infinite;
+        display: inline-block;
+    }
+
     @keyframes orbit1 {
         0% { transform: rotate(0deg) translateX(15vw) scale(1); }
         50% { transform: rotate(180deg) translateX(15vw) scale(1.2); }
@@ -50,15 +59,13 @@ def inject_theme():
         filter: blur(80px); animation: orbit2 12s linear infinite; z-index: 0; pointer-events: none;
     }
 
-    .block-container { position: relative; z-index: 1; padding-top: 3rem; } /* Removed max-width to restore wide left-alignment */
+    .block-container { position: relative; z-index: 1; padding-top: 3rem; }
 
-    /* Glassmorphism Containers */
     div[data-testid="stExpander"], div[data-testid="stMetric"] {
         background: rgba(255, 255, 255, 0.03) !important; backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.08) !important; border-radius: 14px !important;
     }
 
-    /* Fixed Even Radio Boxes */
     div[data-testid="stRadio"] div[role="radiogroup"] { display: flex; gap: 16px; }
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
@@ -69,7 +76,6 @@ def inject_theme():
         background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; box-shadow: 0 0 20px rgba(56,189,248,0.2);
     }
 
-    /* Specifically target the primary Run button so we don't break the uploader's internal buttons */
     button[kind="primary"] {
         background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important;
         color: #fff !important; border-radius: 12px !important; padding: 0.6rem 2rem !important;
@@ -80,7 +86,7 @@ def inject_theme():
 
 inject_theme()
 
-st.markdown("<h1 style='font-size: 3rem; font-weight: 800; margin-bottom: 0;'>ProtCraft <span style='color: #38bdf8;'>Wizard</span> 🧙‍♂️</h1><p style='color: #94a3b8; margin-bottom: 2rem;'>Next-Gen Bioinformatics Pipeline</p>", unsafe_allow_html=True)
+st.markdown("<h1 style='font-size: 3rem; font-weight: 800; margin-bottom: 0;'>ProtCraft <span class='title-glow'>Wizard</span> 🧙‍♂️</h1><p style='color: #94a3b8; margin-bottom: 2rem;'>Next-Gen Bioinformatics Pipeline</p>", unsafe_allow_html=True)
 
 input_option = st.radio("Input Method", ["Raw Sequence / Accession ID", "Upload FASTA File"], horizontal=True, label_visibility="collapsed")
 raw_input = st.text_area("Input", placeholder="Enter sequence (e.g., ATGC...) or ID (e.g., NM_000518)...", height=120) if "Raw" in input_option else None
