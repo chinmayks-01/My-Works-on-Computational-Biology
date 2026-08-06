@@ -10,7 +10,6 @@ from Bio.SeqUtils import gc_fraction
 import pandas as pd
 import requests
 import streamlit as st
-import streamlit.components.v1 as components
 
 st.set_page_config(page_title="ProtCraft Wizard", layout="wide", initial_sidebar_state="expanded")
 
@@ -29,25 +28,26 @@ def inject_theme():
     html, body, [class*="st-"] { font-family: 'Inter', sans-serif !important; }
     code, pre { font-family: 'JetBrains Mono', monospace !important; }
     
-    @keyframes dnaRotateGradient {
-        0% { background-position: 0% 50%; filter: hue-rotate(0deg) blur(90px); }
-        50% { background-position: 100% 50%; filter: hue-rotate(60deg) blur(110px); }
-        100% { background-position: 0% 50%; filter: hue-rotate(0deg) blur(90px); }
+    @keyframes bgMove {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
     }
 
     .stApp {
         background: linear-gradient(135deg, #020617, #090d1a, #030712);
         background-size: 300% 300%;
-        animation: dnaRotateGradient 12s ease infinite;
+        animation: bgMove 15s ease infinite;
         color: #f1f5f9;
     }
 
     .stApp::before {
         content: "";
         position: fixed;
-        top: -20%; left: -20%; width: 140%; height: 140%;
-        background: conic-gradient(from 0deg at 50% 50%, rgba(56,189,248,0.15), rgba(129,140,248,0.2), rgba(192,132,252,0.15), rgba(56,189,248,0.15));
-        animation: dnaRotateGradient 15s linear infinite;
+        top: -30%; left: -30%; width: 160%; height: 160%;
+        background: radial-gradient(circle at 50% 50%, rgba(56,189,248,0.18), rgba(129,140,248,0.22), transparent 70%);
+        filter: blur(90px);
+        animation: bgMove 12s ease infinite alternate;
         z-index: 0;
         pointer-events: none;
     }
@@ -129,7 +129,6 @@ if st.button("Run Pipeline", type="primary"):
             c2.metric("GC Content", f"{gc:.2f}%" if gc is not None else "N/A")
             c3.metric("Length", f"{len(seq)} bp/aa")
 
-            # BLAST
             prog, db = ("blastn", "nt") if seq_type in ["DNA", "RNA"] else ("blastp", "nr")
             matches = []
             try:
