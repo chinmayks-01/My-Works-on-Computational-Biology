@@ -851,8 +851,8 @@ if st.button("Run Pipeline", type="primary"):
                         try:
                             headers = {"Authorization": f"Token {swiss_token}"}
                             
-                            # Stripping out the stop codon (*) to prevent invalid sequence characters
-                            clean_protein_seq = protein_seq.replace("*", "")
+                            # Clean the sequence to prevent 400 errors (remove stop codons, whitespace)
+                            clean_protein_seq = protein_seq.replace("*", "").strip()
                             
                             data = {
                                 "target_sequences": [clean_protein_seq], 
@@ -866,40 +866,45 @@ if st.button("Run Pipeline", type="primary"):
                                 
                                 status_placeholder = st.empty()
                                 
-                                # Polling the specific project ID using the /models/summary/ endpoint
+                                # Poll the main project endpoint to check status
                                 while status in ["RUNNING", "PENDING", "QUEUED"]:
                                     status_placeholder.info(f"SWISS-MODEL API Status: {status}... Polling server (Please wait).")
                                     time.sleep(10)
                                     
-                                    req = requests.get(f"https://swissmodel.expasy.org/project/{project_id}/models/summary/", headers=headers)
-                                    if req.status_code == 200:
-                                        status = req.json().get("status", "UNKNOWN")
+                                    poll_req = requests.get(f"https://swissmodel.expasy.org/project/{project_id}/", headers=headers)
+                                    if poll_req.status_code == 200:
+                                        status = poll_req.json().get("status", "UNKNOWN")
                                     else:
+                                        status = "API_ERROR"
                                         break
                                 
                                 status_placeholder.empty()
                                 
+                                # Process the result based on final status
                                 if status == "COMPLETED":
-                                    req_json = req.json()
-                                    models = req_json.get("models", [])
-                                    if models:
-                                        st.success("Homology model successfully generated!")
-                                        
-                                        # Retrieve the exact PDB coordinates download URL
-                                        pdb_url = models[0].get("coordinates_url") 
-                                        if not pdb_url:
-                                            # Fallback download path
-                                            pdb_url = f"https://swissmodel.expasy.org/project/{project_id}/models/01.pdb"
+                                    models_req = requests.get(f"https://swissmodel.expasy.org/project/{project_id}/models/summary/", headers=headers)
+                                    if models_req.status_code == 200:
+                                        models = models_req.json().get("models", [])
+                                        if models:
+                                            st.success("Homology model successfully generated!")
                                             
-                                        pdb_res = requests.get(pdb_url, headers=headers)
-                                        if pdb_res.status_code == 200:
-                                            render_protein_3d_viewer(pdb_res.text, height=500)
+                                            pdb_url = models[0].get("coordinates_url") 
+                                            if not pdb_url:
+                                                pdb_url = f"https://swissmodel.expasy.org/project/{project_id}/models/01.pdb"
+                                                
+                                            pdb_res = requests.get(pdb_url, headers=headers)
+                                            if pdb_res.status_code == 200:
+                                                render_protein_3d_viewer(pdb_res.text, height=500)
+                                            else:
+                                                st.error("Failed to download the generated PDB coordinate file.")
                                         else:
-                                            st.error("Failed to download the generated PDB coordinate file.")
+                                            st.error("SWISS-MODEL job finished, but no suitable template was found to generate a valid model.")
                                     else:
-                                        st.error("SWISS-MODEL job finished, but no suitable template was found to generate a valid model.")
-                                elif status in ["FAILED", "UNKNOWN"]:
+                                        st.error("Failed to retrieve models after completion.")
+                                elif status in ["FAILED", "UNKNOWN", "API_ERROR"]:
                                     st.error(f"SWISS-MODEL job stopped with status: {status}")
+                                else:
+                                    st.error(f"Unexpected status: {status}")
                             else:
                                 st.error(f"Failed to submit job. Please check your API Token and sequence. (Status Code: {res.status_code})\n\n{res.text}")
                         except Exception as e:
