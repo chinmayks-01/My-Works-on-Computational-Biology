@@ -10,13 +10,15 @@ import pandas as pd
 import streamlit as st
 
 st.set_page_config(page_title="ProtCraft Wizard", layout="wide", initial_sidebar_state="collapsed")
-Entrez.email = "protcraft@example.com" # Hardcoded to remove unnecessary UI clutter
+Entrez.email = "protcraft@example.com"
 
 def inject_theme():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
-    html, body, [class*="st-"] { font-family: 'Inter', sans-serif !important; }
+    
+    /* Scoped font-family to avoid breaking Streamlit's internal Material Icons (fixes the file uploader glitch) */
+    h1, h2, h3, p, label, span { font-family: 'Inter', sans-serif; }
     code, pre { font-family: 'JetBrains Mono', monospace !important; }
     
     /* Hide top-left text artifacts and default header */
@@ -48,7 +50,7 @@ def inject_theme():
         filter: blur(80px); animation: orbit2 12s linear infinite; z-index: 0; pointer-events: none;
     }
 
-    .block-container { position: relative; z-index: 1; padding-top: 3rem; max-width: 900px; }
+    .block-container { position: relative; z-index: 1; padding-top: 3rem; } /* Removed max-width to restore wide left-alignment */
 
     /* Glassmorphism Containers */
     div[data-testid="stExpander"], div[data-testid="stMetric"] {
@@ -61,13 +63,14 @@ def inject_theme():
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
         border-radius: 12px; padding: 0 20px; cursor: pointer; transition: all 0.3s;
-        min-height: 75px; display: flex; align-items: center; /* Forces even height and centering */
+        min-height: 75px; display: flex; align-items: center; 
     }
     div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
         background: rgba(56, 189, 248, 0.15); border-color: #38bdf8; box-shadow: 0 0 20px rgba(56,189,248,0.2);
     }
 
-    .stButton > button {
+    /* Specifically target the primary Run button so we don't break the uploader's internal buttons */
+    button[kind="primary"] {
         background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important;
         color: #fff !important; border-radius: 12px !important; padding: 0.6rem 2rem !important;
         font-weight: 600 !important; border: none !important; box-shadow: 0 4px 20px rgba(14, 165, 233, 0.4);
