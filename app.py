@@ -5,6 +5,7 @@ import time
 import urllib.parse
 import xml.etree.ElementTree as ET
 from textwrap import dedent
+import gzip  # Added to handle compressed SWISS-MODEL files
 
 from Bio import Entrez, SeqIO
 from Bio.Blast import NCBIWWW
@@ -855,14 +856,12 @@ if st.button("Run Pipeline", type="primary"):
                                 "Accept": "application/json"
                             }
                             
-                            # Clean the sequence to prevent 400 errors (remove stop codons, whitespace)
                             clean_protein_seq = protein_seq.replace("*", "").strip()
                             
                             data = {
                                 "target_sequences": [clean_protein_seq], 
                                 "project_title": "ProtCraft Automated Job"
                             }
-                            # Added trailing slash /automodel/ as per Swagger UI
                             res = requests.post("https://swissmodel.expasy.org/automodel/", headers=headers, json=data)
                             
                             if res.status_code in [200, 201, 202]:
@@ -885,15 +884,12 @@ if st.button("Run Pipeline", type="primary"):
                                         if poll_req.status_code == 200:
                                             status = poll_req.json().get("status", "UNKNOWN")
                                         else:
-                                            # Don't fail immediately on a single bad poll (like a timeout or temporary 404)
-                                            # But if it's an explicit auth or server error, we show it.
                                             st.error(f"Polling error {poll_req.status_code}: {poll_req.text}")
                                             status = "API_ERROR"
                                             break
                                     
                                     status_placeholder.empty()
                                     
-                                    # Process the result based on final status
                                     if status == "COMPLETED" and poll_req:
                                         models = poll_req.json().get("models", [])
                                         if models:
@@ -903,9 +899,17 @@ if st.button("Run Pipeline", type="primary"):
                                             if not pdb_url:
                                                 pdb_url = f"https://swissmodel.expasy.org/project/{project_id}/models/01.pdb"
                                                 
+                                            # Download the file
                                             pdb_res = requests.get(pdb_url, headers=headers)
                                             if pdb_res.status_code == 200:
-                                                pdb_text = pdb_res.text
+                                                # Try to decompress the response content if it is gzipped
+                                                try:
+                                                    pdb_bytes = gzip.decompress(pdb_res.content)
+                                                    pdb_text = pdb_bytes.decode('utf-8')
+                                                except Exception:
+                                                    # If decompression fails, assume it's already plain text
+                                                    pdb_text = pdb_res.text
+                                                
                                                 if "ATOM" in pdb_text or "HEADER" in pdb_text:
                                                     render_protein_3d_viewer(pdb_text, height=500)
                                                 else:
