@@ -2,6 +2,7 @@ from collections import Counter
 import io
 import os
 import time
+import urllib.parse
 import xml.etree.ElementTree as ET
 from textwrap import dedent
 
@@ -10,7 +11,6 @@ from Bio.Blast import NCBIWWW
 from Bio.Seq import Seq
 from Bio.SeqUtils import gc_fraction
 import pandas as pd
-import py3Dmol
 import requests
 import streamlit as st
 import streamlit.components.v1 as components
@@ -48,12 +48,11 @@ AA_NAMES = {
 
 
 def inject_custom_ui_theme():
-    """Injects dynamic breathing background, luxury glassmorphism UI, and custom interactive cards."""
+    """Injects high-end animated neon UI, floating particles, and interactive cards."""
     css = """
     <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap');
 
-    /* Global Typography & Font Overrides */
     html, body, [class*="st-"] {
         font-family: 'Inter', sans-serif !important;
     }
@@ -69,53 +68,72 @@ def inject_custom_ui_theme():
     }
 
     .stApp {
-        background: linear-gradient(-45deg, #030712, #090d16, #050811, #020408);
+        background: linear-gradient(-45deg, #020617, #090d1a, #040711, #020308);
         background-size: 400% 400%;
-        animation: breathingGradient 22s ease infinite;
+        animation: breathingGradient 20s ease infinite;
         color: #f1f5f9;
     }
 
-    @keyframes lightSweep {
-        0% { opacity: 0.15; transform: scale(1) rotate(0deg); }
-        50% { opacity: 0.45; transform: scale(1.2) rotate(3deg); }
-        100% { opacity: 0.15; transform: scale(1) rotate(0deg); }
+    /* Floating Neon Glow Animation Background */
+    @keyframes floatOrb1 {
+        0% { transform: translate(0px, 0px) scale(1); opacity: 0.25; }
+        50% { transform: translate(80px, 100px) scale(1.25); opacity: 0.45; }
+        100% { transform: translate(-40px, 50px) scale(0.9); opacity: 0.25; }
+    }
+
+    @keyframes floatOrb2 {
+        0% { transform: translate(0px, 0px) scale(1); opacity: 0.2; }
+        50% { transform: translate(-100px, -70px) scale(1.3); opacity: 0.4; }
+        100% { transform: translate(60px, -40px) scale(1); opacity: 0.2; }
+    }
+
+    .stApp::before {
+        content: "";
+        position: fixed;
+        top: 10%; left: 15%; width: 450px; height: 450px;
+        background: radial-gradient(circle, rgba(14, 165, 233, 0.22), transparent 70%);
+        filter: blur(90px);
+        pointer-events: none;
+        z-index: 0;
+        animation: floatOrb1 14s ease-in-out infinite alternate;
     }
 
     .stApp::after {
         content: "";
         position: fixed;
-        top: -30%; left: -30%; width: 160%; height: 160%;
-        background: radial-gradient(circle at 50% 50%, rgba(56, 189, 248, 0.08), rgba(37, 99, 235, 0.12) 40%, transparent 70%);
-        filter: blur(120px);
+        bottom: 10%; right: 15%; width: 500px; height: 500px;
+        background: radial-gradient(circle, rgba(168, 85, 247, 0.2), transparent 70%);
+        filter: blur(100px);
         pointer-events: none;
         z-index: 0;
-        animation: lightSweep 18s ease-in-out infinite alternate;
+        animation: floatOrb2 18s ease-in-out infinite alternate;
     }
 
     .block-container {
         position: relative;
         z-index: 1;
         padding-top: 2.5rem;
-        padding-bottom: 3rem;
+        padding-bottom: 3.5rem;
     }
 
-    /* Glassmorphic Cards & Containers */
-    div[data-testid="stExpander"], div[data-testid="stMetric"], div[data-testid="df-container"] {
-        background: rgba(255, 255, 255, 0.015) !important;
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
+    /* Glassmorphism Cards with smooth hover glow */
+    div[data-testid="stExpander"], div[data-testid="stMetric"] {
+        background: rgba(255, 255, 255, 0.02) !important;
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        border: 1px solid rgba(255, 255, 255, 0.07) !important;
         border-radius: 16px !important;
         padding: 16px !important;
-        box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.4);
         position: relative;
         z-index: 2;
-        transition: border-color 0.3s ease, box-shadow 0.3s ease;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     div[data-testid="stExpander"]:hover {
-        border-color: rgba(56, 189, 248, 0.25) !important;
-        box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.08);
+        border-color: rgba(56, 189, 248, 0.35) !important;
+        box-shadow: 0 12px 35px 0 rgba(56, 189, 248, 0.12);
+        transform: translateY(-2px);
     }
 
     h1, h2, h3 {
@@ -124,31 +142,31 @@ def inject_custom_ui_theme():
         letter-spacing: -0.03em;
     }
 
-    /* Modernized Primary Buttons */
+    /* Animated Neon Buttons */
     .stButton > button {
         background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important;
         color: #ffffff !important;
-        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
         border-radius: 12px !important;
-        padding: 0.7rem 1.8rem !important;
+        padding: 0.75rem 2rem !important;
         font-weight: 600 !important;
-        letter-spacing: 0.01em;
+        letter-spacing: 0.02em;
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-        box-shadow: 0 4px 20px rgba(14, 165, 233, 0.35);
+        box-shadow: 0 4px 20px rgba(14, 165, 233, 0.4);
         position: relative;
         z-index: 2;
     }
 
     .stButton > button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(14, 165, 233, 0.55);
-        border-color: rgba(255, 255, 255, 0.3) !important;
+        transform: translateY(-3px) scale(1.02);
+        box-shadow: 0 8px 30px rgba(14, 165, 233, 0.7);
+        border-color: rgba(255, 255, 255, 0.4) !important;
     }
 
-    /* Sidebar Styling */
+    /* Sidebar Glassmorphism */
     section[data-testid="stSidebar"] {
-        background-color: rgba(6, 8, 14, 0.9) !important;
-        backdrop-filter: blur(20px);
+        background-color: rgba(4, 6, 12, 0.92) !important;
+        backdrop-filter: blur(22px);
         border-right: 1px solid rgba(255, 255, 255, 0.06);
         z-index: 10;
     }
@@ -168,7 +186,7 @@ def inject_custom_ui_theme():
 
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         flex: 1 1 0px !important;
-        min-height: 76px !important;
+        min-height: 78px !important;
         background: rgba(255, 255, 255, 0.02) !important;
         backdrop-filter: blur(12px) !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -183,18 +201,17 @@ def inject_custom_ui_theme():
     }
 
     div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
-        background: rgba(56, 189, 248, 0.06) !important;
-        border-color: rgba(56, 189, 248, 0.35) !important;
+        background: rgba(56, 189, 248, 0.08) !important;
+        border-color: rgba(56, 189, 248, 0.4) !important;
         transform: translateY(-2px);
     }
 
     div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
-        background: linear-gradient(135deg, rgba(14, 165, 233, 0.15) 0%, rgba(37, 99, 235, 0.15) 100%) !important;
+        background: linear-gradient(135deg, rgba(14, 165, 233, 0.18) 0%, rgba(37, 99, 235, 0.18) 100%) !important;
         border-color: #38bdf8 !important;
-        box-shadow: 0 0 20px rgba(56, 189, 248, 0.25) !important;
+        box-shadow: 0 0 22px rgba(56, 189, 248, 0.3) !important;
     }
 
-    /* Text Inputs & Text Areas Glass Fix */
     textarea, input {
         background-color: rgba(255, 255, 255, 0.02) !important;
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -203,88 +220,11 @@ def inject_custom_ui_theme():
     }
     textarea:focus, input:focus {
         border-color: #38bdf8 !important;
-        box-shadow: 0 0 10px rgba(56, 189, 248, 0.2) !important;
+        box-shadow: 0 0 12px rgba(56, 189, 248, 0.25) !important;
     }
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
-
-
-def render_protein_3d_viewer(pdb_data: str, height: int = 480):
-    """Renders raw PDB/CIF text content safely into 3Dmol.js with a modern dark container wrapper."""
-    escaped_pdb = (
-        pdb_data.replace("\\", "\\\\")
-        .replace("`", "\\`")
-        .replace("${", "\\${")
-        .replace("\n", "\\n")
-    )
-
-    html_code = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
-        <style>
-            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: 'Inter', sans-serif; }}
-            .viewer-wrapper {{
-                position: relative; width: 100%; height: {height}px;
-                background: linear-gradient(180deg, rgba(10, 12, 18, 0.8) 0%, rgba(5, 7, 11, 0.95) 100%);
-                backdrop-filter: blur(16px);
-                border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; overflow: hidden;
-                box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
-            }}
-            #viewport {{ width: 100%; height: 100%; touch-action: none; }}
-            .controls-bar {{
-                position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
-                display: flex; gap: 8px; background: rgba(3, 7, 18, 0.85); backdrop-filter: blur(12px);
-                padding: 6px 14px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.12); z-index: 10;
-                box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            }}
-            .control-btn {{
-                background: rgba(255, 255, 255, 0.05); color: #cbd5e1; border: 1px solid rgba(255, 255, 255, 0.08);
-                border-radius: 20px; padding: 6px 14px; font-size: 11px; font-weight: 600; cursor: pointer;
-                transition: all 0.2s ease;
-            }}
-            .control-btn:hover {{ background: rgba(56, 189, 248, 0.15); color: #38bdf8; border-color: rgba(56, 189, 248, 0.3); }}
-            .control-btn:active, .control-btn.active {{ background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; color: #38bdf8; box-shadow: 0 0 10px rgba(56,189,248,0.3); }}
-        </style>
-    </head>
-    <body>
-        <div class="viewer-wrapper">
-            <div id="viewport"></div>
-            <div class="controls-bar">
-                <button class="control-btn active" onclick="setStyle('cartoon')">Cartoon</button>
-                <button class="control-btn" onclick="setStyle('stick')">Sticks</button>
-                <button class="control-btn" onclick="setStyle('sphere')">Sphere</button>
-                <button class="control-btn" onclick="resetView()">Reset</button>
-            </div>
-        </div>
-        <script>
-            let viewer = null;
-            document.addEventListener("DOMContentLoaded", function() {{
-                viewer = $3Dmol.createViewer(document.getElementById('viewport'), {{backgroundColor: '0x000000', backgroundAlpha: 0.0}});
-                let pdbData = `{escaped_pdb}`;
-                viewer.addModel(pdbData, "pdb");
-                viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
-                viewer.zoomTo(); 
-                viewer.render();
-            }});
-            function setStyle(type) {{
-                if (!viewer) return;
-                viewer.setStyle({{}}, {{}});
-                if (type === 'cartoon') viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
-                else if (type === 'stick') viewer.setStyle({{}}, {{stick: {{colorscheme: 'amino'}}}});
-                else if (type === 'sphere') viewer.setStyle({{}}, {{sphere: {{scale: 0.28, colorscheme: 'spectrum'}}}});
-                viewer.render();
-            }}
-            function resetView() {{ if (viewer) {{ viewer.zoomTo(); viewer.render(); }} }}
-        </script>
-    </body>
-    </html>
-    """
-    components.html(html_code, height=height + 14, scrolling=False)
 
 
 def fetch_sequence(input_query: str, uploaded_file) -> str:
@@ -472,7 +412,7 @@ def render_orf_diagram(orfs, total_seq_len):
     }
 
     html = f"""
-    <div style="background: rgba(10, 14, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 22px; font-family: 'JetBrains Mono', monospace; box-shadow: 0 8px 32px rgba(0,0,0,0.4);">
+    <div style="background: rgba(10, 14, 23, 0.85); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; padding: 22px; font-family: 'JetBrains Mono', monospace; box-shadow: 0 10px 35px rgba(0,0,0,0.5);">
         <div style="font-size: 13px; color: #94a3b8; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center;">
             <span style="color: #f1f5f9; font-weight: 600;"><b>6-Frame ORF Graphic Map</b></span>
             <span style="background: rgba(56, 189, 248, 0.1); color: #38bdf8; padding: 4px 10px; border-radius: 20px; font-size: 11px; border: 1px solid rgba(56, 189, 248, 0.2);">Total Length: {total_seq_len} nt</span>
@@ -588,11 +528,11 @@ def color_protein_sequence_block(seq: str) -> str:
         "H": "#2dd4bf", "Y": "#2dd4bf",
         "S": "#4ade80", "T": "#4ade80",
     }
-    styled_html = "<div style='font-family: \"JetBrains Mono\", monospace; font-size: 14px; word-break: break-all; line-height: 2.2; background: rgba(3, 7, 18, 0.7); border: 1px solid rgba(255, 255, 255, 0.08); padding: 18px; border-radius: 14px; letter-spacing: 1.5px; box-shadow: inset 0 2px 8px rgba(0,0,0,0.5);'>"
+    styled_html = "<div style='font-family: \"JetBrains Mono\", monospace; font-size: 14px; word-break: break-all; line-height: 2.2; background: rgba(3, 7, 18, 0.75); border: 1px solid rgba(255, 255, 255, 0.08); padding: 18px; border-radius: 14px; letter-spacing: 1.5px; box-shadow: inset 0 2px 10px rgba(0,0,0,0.6);'>"
     for aa in seq:
         bg = bg_colors.get(aa, "#334155")
         text_color = "#030712" if aa in ["A", "I", "L", "M", "F", "W", "V", "N", "Q", "C", "G", "P", "H", "Y", "S", "T"] else "#ffffff"
-        styled_html += f"<span style='background-color: {bg}; color: {text_color}; font-weight: 700; padding: 3px 6px; margin: 2px 1px; display: inline-block; text-align: center; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.2);'>{aa}</span>"
+        styled_html += f"<span style='background-color: {bg}; color: {text_color}; font-weight: 700; padding: 3px 6px; margin: 2px 1px; display: inline-block; text-align: center; border-radius: 4px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);'>{aa}</span>"
     styled_html += "</div>"
     return styled_html
 
@@ -612,7 +552,7 @@ st.markdown(
 }
 @keyframes titleTextGlow {
     0% { filter: drop-shadow(0px 0px 10px rgba(56, 189, 248, 0.4)); }
-    50% { filter: drop-shadow(0px 0px 28px rgba(56, 189, 248, 0.9)); }
+    50% { filter: drop-shadow(0px 0px 30px rgba(56, 189, 248, 0.95)); }
     100% { filter: drop-shadow(0px 0px 10px rgba(56, 189, 248, 0.4)); }
 }
 .title-glow-text {
@@ -635,7 +575,7 @@ st.markdown(
 
 @keyframes spinDna {
     0% { transform: scaleX(1); }
-    50% { transform: scaleX(-0.85); filter: drop-shadow(0 0 12px #38bdf8); }
+    50% { transform: scaleX(-0.85); filter: drop-shadow(0 0 14px #38bdf8); }
     100% { transform: scaleX(1); }
 }
 .dna-layer {
@@ -653,7 +593,7 @@ st.markdown(
 
 @keyframes pulseProtein {
     0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 6px rgba(192, 132, 252, 0.6)); }
-    50% { transform: scale(1.1) rotate(4deg); filter: drop-shadow(0 0 18px rgba(192, 132, 252, 1)); }
+    50% { transform: scale(1.12) rotate(4deg); filter: drop-shadow(0 0 20px rgba(192, 132, 252, 1)); }
 }
 .protein-cluster {
     transform-origin: 60px 345px;
@@ -662,7 +602,7 @@ st.markdown(
 
 @keyframes processArrow {
     0%, 100% { opacity: 0.3; }
-    50% { opacity: 1; filter: drop-shadow(0 0 8px #38bdf8); }
+    50% { opacity: 1; filter: drop-shadow(0 0 10px #38bdf8); }
 }
 .process-arrow {
     animation: processArrow 2s infinite;
@@ -673,7 +613,7 @@ st.markdown(
     <h1 style='font-size: 3rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
         ProtCraft <span class='title-glow-text'>Wizard</span> 🧙‍♂️
     </h1>
-    <p style="color: #94a3b8; font-size: 1.05rem; margin-top: 8px; font-weight: 400;">Next-Gen Bioinformatics Sequence Pipeline & Structure Analysis Suite</p>
+    <p style="color: #94a3b8; font-size: 1.05rem; margin-top: 8px; font-weight: 400;">Next-Gen Bioinformatics Sequence Pipeline & Structure Prediction Suite</p>
 </div>
 <div style="flex-shrink: 0; text-align: right;">
 <svg class="central-dogma-anim-vertical" viewBox="0 0 120 400" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -869,25 +809,26 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     st.write("No significant RCSB PDB matches found.")
 
-            # --- PDB STRUCTURE VISUALIZATION (Direct PDB Content Download) ---
-            st.header("Protein Structure Visualization (Top PDB Match)")
-
-            with st.spinner("Fetching top PDB structure content from RCSB..."):
-                pdb_matches = fetch_pdb_similar(protein_seq)
-
-            if pdb_matches and len(pdb_matches) > 0:
-                top_pdb_id = pdb_matches[0]["PDB ID"]
-                pdb_url = f"https://files.rcsb.org/download/{top_pdb_id}.pdb"
-                res = requests.get(pdb_url)
-
-                if res.status_code == 200:
-                    st.success(
-                        f"Successfully loaded structure for PDB ID: **{top_pdb_id}**"
-                    )
-                    render_protein_3d_viewer(pdb_data=res.text, height=500)
-                else:
-                    st.error(
-                        f"Could not download PDB file content for {top_pdb_id}."
-                    )
+            # --- SWISS-MODEL URL-BASED PREDICTION INTEGRATION ---
+            st.header("Protein Structure Prediction (SWISS-MODEL)")
+            
+            if protein_seq:
+                encoded_seq = urllib.parse.quote(protein_seq)
+                swiss_url = f"https://swissmodel.expasy.org/interactive?target={encoded_seq}"
+                
+                st.markdown(
+                    f"""
+                    <div style="background: rgba(10, 14, 23, 0.85); border: 1px solid rgba(56, 189, 248, 0.25); border-radius: 16px; padding: 24px; box-shadow: 0 10px 35px rgba(0,0,0,0.5); text-align: center;">
+                        <h3 style="color: #38bdf8; margin-top: 0; margin-bottom: 10px;">Ready for Homology Modeling</h3>
+                        <p style="color: #cbd5e1; font-size: 0.95rem; margin-bottom: 20px; line-height: 1.5;">
+                            Click below to seamlessly transfer your translated protein sequence ({len(protein_seq)} aa) directly into SWISS-MODEL for automated template search and 3D structure prediction.
+                        </p>
+                        <a href="{swiss_url}" target="_blank" style="display: inline-block; background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); color: #ffffff; padding: 0.8rem 2.2rem; border-radius: 12px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 20px rgba(14, 165, 233, 0.45); transition: all 0.3s ease;">
+                            🚀 Open in SWISS-MODEL
+                        </a>
+                    </div>
+                    """,
+                    unsafe_allow_html=True
+                )
             else:
-                st.warning("No close PDB structural matches found to display.")
+                st.warning("No protein sequence available for modeling.")
