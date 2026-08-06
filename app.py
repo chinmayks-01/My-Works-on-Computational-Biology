@@ -1,4 +1,3 @@
-import base64
 from collections import Counter
 import io
 import os
@@ -178,7 +177,7 @@ def inject_custom_ui_theme():
 
 def render_protein_3d_viewer(pdb_data: str, height: int = 480):
     """Renders raw PDB/CIF text content safely into 3Dmol.js using Base64 encoding."""
-    # Base64 encode the string to safely bypass all HTML/JS quoting issues
+    import base64
     b64_pdb = base64.b64encode(pdb_data.encode('utf-8')).decode('utf-8')
 
     html_code = f"""
@@ -223,7 +222,6 @@ def render_protein_3d_viewer(pdb_data: str, height: int = 480):
             document.addEventListener("DOMContentLoaded", function() {{
                 try {{
                     viewer = $3Dmol.createViewer(document.getElementById('viewport'), {{backgroundColor: '0x000000', backgroundAlpha: 0.0}});
-                    // Safely decode the Base64 PDB string
                     let pdbData = atob("{b64_pdb}");
                     viewer.addModel(pdbData, "pdb");
                     viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
@@ -851,7 +849,11 @@ if st.button("Run Pipeline", type="primary"):
                 else:
                     with st.spinner("Submitting sequence to SWISS-MODEL and generating homology model (this may take a few minutes)..."):
                         try:
-                            headers = {"Authorization": f"Token {swiss_token}"}
+                            headers = {
+                                "Authorization": f"Token {swiss_token}",
+                                "Content-Type": "application/json",
+                                "Accept": "application/json"
+                            }
                             
                             # Clean the sequence to prevent 400 errors (remove stop codons, whitespace)
                             clean_protein_seq = protein_seq.replace("*", "").strip()
@@ -860,33 +862,40 @@ if st.button("Run Pipeline", type="primary"):
                                 "target_sequences": [clean_protein_seq], 
                                 "project_title": "ProtCraft Automated Job"
                             }
-                            res = requests.post("https://swissmodel.expasy.org/automodel", headers=headers, json=data)
+                            # Added trailing slash /automodel/ as per Swagger UI
+                            res = requests.post("https://swissmodel.expasy.org/automodel/", headers=headers, json=data)
                             
                             if res.status_code in [200, 201, 202]:
-                                project_id = res.json().get("project_id")
-                                status = res.json().get("status", "QUEUED")
+                                resp_json = res.json()
+                                project_id = resp_json.get("project_id")
+                                status = resp_json.get("status", "QUEUED")
                                 
-                                status_placeholder = st.empty()
-                                
-                                # Poll the main project endpoint to check status
-                                while status in ["RUNNING", "PENDING", "QUEUED"]:
-                                    status_placeholder.info(f"SWISS-MODEL API Status: {status}... Polling server (Please wait).")
-                                    time.sleep(10)
+                                if not project_id:
+                                    st.error(f"API did not return a project_id. Full response: {resp_json}")
+                                else:
+                                    status_placeholder = st.empty()
+                                    poll_url = f"https://swissmodel.expasy.org/project/{project_id}/models/summary/"
                                     
-                                    poll_req = requests.get(f"https://swissmodel.expasy.org/project/{project_id}/", headers=headers)
-                                    if poll_req.status_code == 200:
-                                        status = poll_req.json().get("status", "UNKNOWN")
-                                    else:
-                                        status = "API_ERROR"
-                                        break
-                                
-                                status_placeholder.empty()
-                                
-                                # Process the result based on final status
-                                if status == "COMPLETED":
-                                    models_req = requests.get(f"https://swissmodel.expasy.org/project/{project_id}/models/summary/", headers=headers)
-                                    if models_req.status_code == 200:
-                                        models = models_req.json().get("models", [])
+                                    poll_req = None
+                                    while status in ["RUNNING", "PENDING", "QUEUED"]:
+                                        status_placeholder.info(f"SWISS-MODEL API Status: {status} (ID: {project_id})... Polling server (Please wait).")
+                                        time.sleep(10)
+                                        
+                                        poll_req = requests.get(poll_url, headers=headers)
+                                        if poll_req.status_code == 200:
+                                            status = poll_req.json().get("status", "UNKNOWN")
+                                        else:
+                                            # Don't fail immediately on a single bad poll (like a timeout or temporary 404)
+                                            # But if it's an explicit auth or server error, we show it.
+                                            st.error(f"Polling error {poll_req.status_code}: {poll_req.text}")
+                                            status = "API_ERROR"
+                                            break
+                                    
+                                    status_placeholder.empty()
+                                    
+                                    # Process the result based on final status
+                                    if status == "COMPLETED" and poll_req:
+                                        models = poll_req.json().get("models", [])
                                         if models:
                                             st.success("Homology model successfully generated!")
                                             
@@ -903,15 +912,11 @@ if st.button("Run Pipeline", type="primary"):
                                                     st.error("SWISS-MODEL returned an invalid file (not a PDB).")
                                                     st.code(pdb_text[:500])
                                             else:
-                                                st.error("Failed to download the generated PDB coordinate file.")
+                                                st.error(f"Failed to download the generated PDB coordinate file. (Code: {pdb_res.status_code})")
                                         else:
                                             st.error("SWISS-MODEL job finished, but no suitable template was found to generate a valid model.")
-                                    else:
-                                        st.error("Failed to retrieve models after completion.")
-                                elif status in ["FAILED", "UNKNOWN", "API_ERROR"]:
-                                    st.error(f"SWISS-MODEL job stopped with status: {status}")
-                                else:
-                                    st.error(f"Unexpected status: {status}")
+                                    elif status in ["FAILED", "UNKNOWN", "API_ERROR"]:
+                                        st.error(f"SWISS-MODEL job stopped with status: {status}")
                             else:
                                 st.error(f"Failed to submit job. Please check your API Token and sequence. (Status Code: {res.status_code})\n\n{res.text}")
                         except Exception as e:
