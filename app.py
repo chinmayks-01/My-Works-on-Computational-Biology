@@ -1,5 +1,5 @@
 import io
-import urllib.parse
+import time
 import xml.etree.ElementTree as ET
 
 from Bio import Entrez, SeqIO
@@ -12,34 +12,24 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 st.set_page_config(page_title="ProtCraft Wizard", layout="wide", initial_sidebar_state="collapsed")
-Entrez.email = "protcraft@example.com"
 
 def inject_theme():
     st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono:wght@400;700&display=swap');
     
-    /* Scoped font-family to avoid breaking Streamlit's internal Material Icons */
     h1, h2, h3, p, label, span { font-family: 'Inter', sans-serif; }
     code, pre { font-family: 'JetBrains Mono', monospace !important; }
     
-    /* Hide top-left text artifacts and default header */
     header[data-testid="stHeader"], [data-testid="collapsedControl"] { display: none !important; }
-    section[data-testid="stSidebar"] { display: none !important; }
-
-    /* The Glow Animation */
+    
     @keyframes titleTextGlow {
         0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.4)); }
         50% { filter: drop-shadow(0px 0px 25px rgba(56, 189, 248, 0.95)); }
         100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.4)); }
     }
-    .title-glow {
-        color: #38bdf8;
-        animation: titleTextGlow 3.5s ease-in-out infinite;
-        display: inline-block;
-    }
+    .title-glow { color: #38bdf8; animation: titleTextGlow 3.5s ease-in-out infinite; display: inline-block; }
 
-    /* Animated Rotating DNA-like Blurry Background */
     @keyframes orbit1 {
         0% { transform: rotate(0deg) translateX(15vw) scale(1); }
         50% { transform: rotate(180deg) translateX(15vw) scale(1.2); }
@@ -66,13 +56,11 @@ def inject_theme():
 
     .block-container { position: relative; z-index: 1; padding-top: 3rem; }
 
-    /* Glassmorphism Containers */
     div[data-testid="stExpander"], div[data-testid="stMetric"] {
         background: rgba(255, 255, 255, 0.03) !important; backdrop-filter: blur(20px);
         border: 1px solid rgba(255, 255, 255, 0.08) !important; border-radius: 14px !important;
     }
 
-    /* Fixed Even Radio Boxes */
     div[data-testid="stRadio"] div[role="radiogroup"] { display: flex; gap: 16px; }
     div[data-testid="stRadio"] div[role="radiogroup"] label {
         flex: 1; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.1);
@@ -133,6 +121,10 @@ def render_protein_3d_viewer(pdb_data: str, height: int = 500):
 
 inject_theme()
 
+st.sidebar.header("API Configurations")
+Entrez.email = st.sidebar.text_input("NCBI Email", value="protcraft@example.com")
+swiss_token = st.sidebar.text_input("SWISS-MODEL API Token", type="password", help="Required for background prediction.")
+
 st.markdown("<h1 style='font-size: 3rem; font-weight: 800; margin-bottom: 0;'>ProtCraft <span class='title-glow'>Wizard</span> 🧙‍♂️</h1><p style='color: #94a3b8; margin-bottom: 2rem;'>Next-Gen Bioinformatics Pipeline</p>", unsafe_allow_html=True)
 
 input_option = st.radio("Input Method", ["Raw Sequence / Accession ID", "Upload FASTA File"], horizontal=True, label_visibility="collapsed")
@@ -190,17 +182,37 @@ if st.button("Run Pipeline", type="primary"):
             with st.expander("Translated Protein Sequence", expanded=True):
                 st.code(protein, language=None)
 
-            # AI Structure Prediction via ESMFold API
-            st.subheader("AI Structure Prediction (ESMFold)")
-            if len(protein) > 400:
-                st.warning("Sequence is too long for instant API prediction (Max 400 AA).")
+            st.subheader("SWISS-MODEL Automated Prediction")
+            if not swiss_token:
+                st.warning("⚠️ Please provide a SWISS-MODEL API Token in the sidebar to run background predictions.")
             else:
-                with st.spinner("Folding protein sequence in the background via ESMFold AI..."):
+                with st.spinner("Submitting to SWISS-MODEL and building model (this may take a few minutes)..."):
                     try:
-                        res = requests.post("https://api.esmatlas.com/foldSequence/v1/pdb/", data=protein)
-                        if res.status_code == 200:
-                            render_protein_3d_viewer(res.text)
+                        headers = {"Authorization": f"Token {swiss_token}"}
+                        data = {"target_sequences": protein, "project_title": "ProtCraft_Automated"}
+                        res = requests.post("https://swissmodel.expasy.org/project/", headers=headers, json=data)
+                        
+                        if res.status_code in [200, 201, 202]:
+                            proj_url = res.json().get("url")
+                            status = "RUNNING"
+                            
+                            status_placeholder = st.empty()
+                            while status in ["RUNNING", "PENDING", "QUEUED"]:
+                                status_placeholder.info(f"SWISS-MODEL Status: {status}... Polling server.")
+                                time.sleep(10)
+                                req = requests.get(proj_url, headers=headers).json()
+                                status = req.get("status", "UNKNOWN")
+                            
+                            status_placeholder.empty()
+                            
+                            if status == "COMPLETED" and req.get("models"):
+                                st.success("Model successfully generated!")
+                                pdb_url = req["models"][0]["coordinates_url"]
+                                pdb_text = requests.get(pdb_url, headers=headers).text
+                                render_protein_3d_viewer(pdb_text)
+                            else:
+                                st.error("SWISS-MODEL finished but could not generate a valid model for this sequence.")
                         else:
-                            st.error("Prediction failed. The sequence might be invalid or the API is busy.")
+                            st.error(f"Failed to submit job. Check API Token. (Status: {res.status_code})")
                     except Exception as e:
-                        st.error(f"Could not connect to prediction server: {e}")
+                        st.error(f"API Error: {e}")
