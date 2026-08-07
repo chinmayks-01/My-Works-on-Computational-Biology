@@ -1,6 +1,190 @@
+from collections import Counter
+import io
+import os
+import time
+import urllib.parse
+import xml.etree.ElementTree as ET
+from textwrap import dedent
+import gzip
+
+from Bio import Entrez, SeqIO
+from Bio.Blast import NCBIWWW
+from Bio.Seq import Seq
+from Bio.SeqUtils import gc_fraction
+import pandas as pd
+import requests
+import streamlit as st
+import streamlit.components.v1 as components
+
+
+st.set_page_config(page_title="Bioinformatics Sequence Pipeline", layout="wide")
+
+
+AA_NAMES = {
+    "A": "Alanine",
+    "C": "Cysteine",
+    "D": "Aspartic Acid",
+    "E": "Glutamic Acid",
+    "F": "Phenylalanine",
+    "G": "Glycine",
+    "H": "Histidine",
+    "I": "Isoleucine",
+    "K": "Lysine",
+    "L": "Leucine",
+    "M": "Methionine",
+    "N": "Asparagine",
+    "P": "Proline",
+    "Q": "Glutamine",
+    "R": "Arginine",
+    "S": "Serine",
+    "T": "Threonine",
+    "V": "Valine",
+    "W": "Tryptophan",
+    "Y": "Tyrosine",
+}
+
+
+def inject_custom_ui_theme():
+    """Injects dynamic breathing background, glassmorphism UI, side-by-side radio cards, and hides header anchor link icons."""
+    css = """
+    <style>
+    @keyframes breathingGradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+
+    .stApp {
+        background: linear-gradient(-45deg, #000000, #0a0a0c, #050811, #000000);
+        background-size: 400% 400%;
+        animation: breathingGradient 18s ease infinite;
+        color: #f8fafc;
+    }
+
+    @keyframes lightSweep {
+        0% { opacity: 0.2; transform: scale(1); }
+        50% { opacity: 0.6; transform: scale(1.15); }
+        100% { opacity: 0.2; transform: scale(1); }
+    }
+
+    .stApp::after {
+        content: "";
+        position: fixed;
+        top: -20%; left: -20%; width: 140%; height: 140%;
+        background: linear-gradient(
+            125deg, 
+            transparent 15%, 
+            rgba(56, 189, 248, 0.12) 35%, 
+            rgba(37, 99, 235, 0.22) 50%, 
+            rgba(56, 189, 248, 0.12) 65%, 
+            transparent 85%
+        );
+        background-size: 200% 200%;
+        filter: blur(100px);
+        pointer-events: none;
+        z-index: 0;
+        animation: lightSweep 14s ease-in-out infinite alternate;
+    }
+
+    .block-container {
+        position: relative;
+        z-index: 1;
+    }
+
+    div[data-testid="stExpander"], div[data-testid="stMetric"] {
+        background: rgba(255, 255, 255, 0.02) !important;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 12px !important;
+        padding: 10px !important;
+        position: relative;
+        z-index: 2;
+    }
+
+    h1, h2, h3 {
+        color: #f1f5f9 !important;
+        font-weight: 700 !important;
+        letter-spacing: -0.02em;
+    }
+
+    /* Hide Streamlit header anchor link icons */
+    .stApp h1 a, .stApp h2 a, .stApp h3 a, 
+    a[data-testid="stHeaderActionElements"],
+    a[aria-label="Link to section"] {
+        display: none !important;
+    }
+
+    .stButton > button {
+        background: linear-gradient(135deg, #0284c7 0%, #2563eb 100%) !important;
+        color: #ffffff !important;
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 0.6rem 1.5rem !important;
+        font-weight: 600 !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        position: relative;
+        z-index: 2;
+    }
+
+    .stButton > button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    }
+
+    section[data-testid="stSidebar"] {
+        background-color: rgba(10, 10, 12, 0.85) !important;
+        backdrop-filter: blur(16px);
+        border-right: 1px solid rgba(255, 255, 255, 0.08);
+        z-index: 10;
+    }
+    
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: row !important;
+        gap: 16px !important;
+        width: 100% !important;
+        align-items: stretch !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"] label {
+        flex: 1 1 0px !important;
+        min-height: 72px !important;
+        background: rgba(255, 255, 255, 0.03) !important;
+        backdrop-filter: blur(10px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 10px !important;
+        padding: 12px 20px !important;
+        transition: all 0.3s ease !important;
+        cursor: pointer !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: flex-start !important;
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"] label:hover {
+        background: rgba(56, 189, 248, 0.08) !important;
+        border-color: rgba(56, 189, 248, 0.4) !important;
+        transform: translateY(-1px);
+    }
+
+    div[data-testid="stRadio"] div[role="radiogroup"] label:has(input:checked) {
+        background: rgba(56, 189, 248, 0.12) !important;
+        border-color: #38bdf8 !important;
+        box-shadow: 0 0 15px rgba(56, 189, 248, 0.2) !important;
+    }
+    </style>
+    """
+    st.markdown(css, unsafe_allow_html=True)
+
+
 def render_header_with_horizontal_dna():
-    """Renders page header alongside an unconstrained 3D particle horizontally-stretched rotating DNA strand in gradient blue with soft blurry ends."""
-    # Main page title container with DOM mounting target for canvas
+    """Renders page header alongside an interactive wizard emoji and clean gradient-blue 3D particle horizontal DNA strand."""
     st.markdown(
         """
         <style>
@@ -25,6 +209,15 @@ def render_header_with_horizontal_dna():
             animation: titleTextGlow 4s ease-in-out infinite;
             display: inline-block;
         }
+        #interactive-wizard {
+            display: inline-block;
+            cursor: pointer;
+            transition: transform 0.08s ease-out;
+            transform-style: preserve-3d;
+            transform-origin: center center;
+            user-select: none;
+            will-change: transform;
+        }
         #dna-canvas-target {
             flex: 1;
             max-width: 650px;
@@ -35,7 +228,7 @@ def render_header_with_horizontal_dna():
         <div class="header-wrapper">
             <div style="flex-shrink: 0;">
                 <h1 style='font-size: 2.6rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
-                    Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
+                    Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> <span id="interactive-wizard">🧙‍♂️</span>
                 </h1>
             </div>
             <div id="dna-canvas-target"></div>
@@ -44,15 +237,54 @@ def render_header_with_horizontal_dna():
         unsafe_allow_html=True,
     )
 
-    # Injected script with gradient blue color scheme and progressive end-blurring
-    dna_js = """
+    dna_and_wizard_js = """
     <script>
     (function() {
-        try {
-            const parentDoc = window.parent.document;
-            const targetContainer = parentDoc.getElementById('dna-canvas-target');
-            if (!targetContainer) return;
+        const parentDoc = window.parent.document;
 
+        function initHeaderAnimations() {
+            const wizard = parentDoc.getElementById('interactive-wizard');
+            const targetContainer = parentDoc.getElementById('dna-canvas-target');
+
+            if (!wizard || !targetContainer) {
+                setTimeout(initHeaderAnimations, 50);
+                return;
+            }
+
+            // --- 1. INTERACTIVE MOUSE-TRACKING WIZARD EMOJI ---
+            if (!parentDoc._wizardTrackingAttached) {
+                parentDoc._wizardTrackingAttached = true;
+
+                parentDoc.addEventListener('mousemove', (e) => {
+                    const activeWizard = parentDoc.getElementById('interactive-wizard');
+                    if (!activeWizard) return;
+
+                    const rect = activeWizard.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+
+                    const dx = e.clientX - centerX;
+                    const dy = e.clientY - centerY;
+
+                    const maxAngle = 28;
+                    const tiltY = Math.max(-maxAngle, Math.min(maxAngle, dx * 0.06));
+                    const tiltX = Math.max(-maxAngle, Math.min(maxAngle, -dy * 0.06));
+
+                    const shiftX = Math.max(-8, Math.min(8, dx * 0.02));
+                    const shiftY = Math.max(-8, Math.min(8, dy * 0.02));
+
+                    activeWizard.style.transform = `perspective(350px) translate3d(${shiftX}px, ${shiftY}px, 12px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.18)`;
+                });
+
+                parentDoc.addEventListener('mouseleave', () => {
+                    const activeWizard = parentDoc.getElementById('interactive-wizard');
+                    if (activeWizard) {
+                        activeWizard.style.transform = `perspective(350px) translate3d(0px, 0px, 0px) rotateX(0deg) rotateY(0deg) scale(1)`;
+                    }
+                });
+            }
+
+            // --- 2. CLEAN DNA STRAND CANVAS (WITHOUT GLOW) ---
             let canvas = parentDoc.getElementById('unboundedDnaCanvas');
             if (!canvas) {
                 canvas = parentDoc.createElement('canvas');
@@ -63,6 +295,8 @@ def render_header_with_horizontal_dna():
                 canvas.style.pointerEvents = 'auto';
                 canvas.style.cursor = 'pointer';
                 canvas.style.zIndex = '5';
+                targetContainer.appendChild(canvas);
+            } else if (canvas.parentElement !== targetContainer) {
                 targetContainer.appendChild(canvas);
             }
 
@@ -82,40 +316,37 @@ def render_header_with_horizontal_dna():
             let rotationAngle = 0;
             const mouse = { x: -1000, y: -1000, active: false };
 
-            canvas.addEventListener('mousemove', (e) => {
+            canvas.onmousemove = (e) => {
                 const rect = canvas.getBoundingClientRect();
                 mouse.x = e.clientX - rect.left;
                 mouse.y = e.clientY - rect.top;
                 mouse.active = true;
-            });
+            };
 
-            canvas.addEventListener('mouseleave', () => {
+            canvas.onmouseleave = () => {
                 mouse.x = -1000;
                 mouse.y = -1000;
                 mouse.active = false;
-            });
+            };
 
             const numSteps = 42;
             const strandRadius = 24;
             const rungDotsCount = 5;
 
-            // Helper to interpolate gradient blue colors across the strand
             function getGradientBlueColor(ratio, type, rungFraction) {
-                // Electric Sky Blue -> Royal Blue -> Cobalt Gradient
                 if (type === 'strand1') {
-                    return ratio < 0.5 ? '#38bdf8' : '#60a5fa'; // Bright Cyan-Blue to Sky Blue
+                    return ratio < 0.5 ? '#38bdf8' : '#60a5fa';
                 } else if (type === 'strand2') {
-                    return ratio < 0.5 ? '#2563eb' : '#1d4ed8'; // Royal Blue to Sapphire
+                    return ratio < 0.5 ? '#60a5fa' : '#3b82f6';
                 } else {
-                    // Nucleotide rungs: soft intermediate blue gradient
-                    return rungFraction < 0.5 ? '#0284c7' : '#3b82f6';
+                    return rungFraction < 0.5 ? '#38bdf8' : '#60a5fa';
                 }
             }
 
             class DNAParticle {
                 constructor(type, indexRatio, rungFraction) {
                     this.type = type;
-                    this.indexRatio = indexRatio; // 0.0 (left) to 1.0 (right)
+                    this.indexRatio = indexRatio;
                     this.rungFraction = rungFraction;
                     this.color = getGradientBlueColor(indexRatio, type, rungFraction);
                     
@@ -161,7 +392,6 @@ def render_header_with_horizontal_dna():
                     this.z = target.tz;
                     this.scale = 1 + this.z / 150;
 
-                    // Mouse scatter physics
                     const dx = this.x - mouse.x;
                     const dy = this.y - mouse.y;
                     const dist = Math.hypot(dx, dy);
@@ -174,7 +404,6 @@ def render_header_with_horizontal_dna():
                         this.vy += Math.sin(anglePush) * force;
                     }
 
-                    // Elastic spring return force
                     const spring = 0.08;
                     const friction = 0.83;
 
@@ -189,24 +418,15 @@ def render_header_with_horizontal_dna():
                 }
 
                 draw(ctx) {
-                    // Edge Factor: 1 at center, smoothly tapering down towards 0 at both ends
                     const edgeFactor = Math.sin(this.indexRatio * Math.PI);
-
-                    // Alpha gradually softens towards both ends (from 100% to ~38%)
                     const depthAlpha = (this.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
-                    const edgeAlphaMultiplier = 0.38 + 0.62 * edgeFactor;
+                    const edgeAlphaMultiplier = 0.4 + 0.6 * edgeFactor;
                     const alpha = depthAlpha * edgeAlphaMultiplier;
-
-                    // Blur increases gradually towards both ends for a soft out-of-focus glow
-                    const endBlurAddition = (1 - edgeFactor) * 8.5;
-                    const baseBlur = this.type === 'rung' ? 5 : 10;
 
                     const baseRadius = this.type === 'rung' ? 2.2 : 3.6;
                     const radius = Math.max(0.6, baseRadius * this.scale);
 
                     ctx.save();
-                    ctx.shadowBlur = (baseBlur + endBlurAddition) * this.scale;
-                    ctx.shadowColor = this.color;
                     ctx.fillStyle = this.color;
                     ctx.globalAlpha = Math.max(0.12, alpha);
                     ctx.beginPath();
@@ -218,7 +438,6 @@ def render_header_with_horizontal_dna():
 
             const particles = [];
 
-            // Construct Mesh
             for (let i = 0; i <= numSteps; i++) {
                 const ratio = i / numSteps;
 
@@ -237,6 +456,10 @@ def render_header_with_horizontal_dna():
                 p.y = initTarget.ty;
             });
 
+            if (parentDoc._dnaAnimId) {
+                cancelAnimationFrame(parentDoc._dnaAnimId);
+            }
+
             function animate() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 rotationAngle += 0.02;
@@ -245,14 +468,648 @@ def render_header_with_horizontal_dna():
                 particles.sort((a, b) => a.z - b.z);
                 particles.forEach(p => p.draw(ctx));
 
-                requestAnimationFrame(animate);
+                parentDoc._dnaAnimId = requestAnimationFrame(animate);
             }
 
             animate();
-        } catch(err) {
-            console.error("DNA Canvas Error:", err);
         }
+
+        initHeaderAnimations();
     })();
     </script>
     """
-    components.html(dna_js, height=0, width=0)
+    components.html(dna_and_wizard_js, height=0, width=0)
+
+
+def render_protein_3d_viewer(pdb_data: str, height: int = 480):
+    """Renders raw PDB/CIF text content safely into 3Dmol.js using Base64 encoding."""
+    import base64
+    b64_pdb = base64.b64encode(pdb_data.encode('utf-8')).decode('utf-8')
+
+    html_code = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
+        <style>
+            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
+            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: -apple-system, sans-serif; }}
+            .viewer-wrapper {{
+                position: relative; width: 100%; height: {height}px;
+                background: rgba(10, 10, 12, 0.6); backdrop-filter: blur(12px);
+                border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; overflow: hidden;
+            }}
+            #viewport {{ width: 100%; height: 100%; touch-action: none; }}
+            .controls-bar {{
+                position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+                display: flex; gap: 6px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px);
+                padding: 6px 12px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 10;
+            }}
+            .control-btn {{
+                background: rgba(255, 255, 255, 0.08); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.12);
+                border-radius: 20px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
+            }}
+            .control-btn:active, .control-btn.active {{ background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; color: #38bdf8; }}
+        </style>
+    </head>
+    <body>
+        <div class="viewer-wrapper">
+            <div id="viewport"></div>
+            <div class="controls-bar">
+                <button class="control-btn active" onclick="setStyle('cartoon')">Cartoon</button>
+                <button class="control-btn" onclick="setStyle('stick')">Sticks</button>
+                <button class="control-btn" onclick="setStyle('sphere')">Sphere</button>
+                <button class="control-btn" onclick="resetView()">Reset</button>
+            </div>
+        </div>
+        <script>
+            let viewer = null;
+            document.addEventListener("DOMContentLoaded", function() {{
+                try {{
+                    viewer = $3Dmol.createViewer(document.getElementById('viewport'), {{backgroundColor: '0x000000', backgroundAlpha: 0.0}});
+                    let pdbData = atob("{b64_pdb}");
+                    viewer.addModel(pdbData, "pdb");
+                    viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
+                    viewer.zoomTo(); 
+                    viewer.render();
+                }} catch (error) {{
+                    console.error("Error rendering 3Dmol:", error);
+                }}
+            }});
+            function setStyle(type) {{
+                if (!viewer) return;
+                viewer.setStyle({{}}, {{}});
+                if (type === 'cartoon') viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
+                else if (type === 'stick') viewer.setStyle({{}}, {{stick: {{colorscheme: 'amino'}}}});
+                else if (type === 'sphere') viewer.setStyle({{}}, {{sphere: {{scale: 0.28, colorscheme: 'spectrum'}}}});
+                viewer.render();
+            }}
+            function resetView() {{ if (viewer) {{ viewer.zoomTo(); viewer.render(); }} }}
+        </script>
+    </body>
+    </html>
+    """
+    components.html(html_code, height=height + 10, scrolling=False)
+
+
+def fetch_sequence(input_query: str, uploaded_file) -> str:
+    if uploaded_file is not None:
+        string_data = uploaded_file.getvalue().decode("utf-8")
+        record = SeqIO.read(io.StringIO(string_data), "fasta")
+        return str(record.seq).upper()
+    input_query = input_query.strip()
+    if not input_query:
+        return ""
+    if any(char.isdigit() for char in input_query) and len(input_query) < 20:
+        for db in ["nucleotide", "protein"]:
+            try:
+                handle = Entrez.efetch(
+                    db=db, id=input_query, rettype="fasta", retmode="text"
+                )
+                record = SeqIO.read(handle, "fasta")
+                handle.close()
+                return str(record.seq).upper()
+            except Exception:
+                continue
+    return input_query.replace(" ", "").replace("\n", "").upper()
+
+
+def identify_sequence(seq: str):
+    seq = seq.strip().upper()
+    seq_set = set(seq)
+    dna_bases = set("ACGTN")
+    rna_bases = set("ACGUN")
+    protein_bases = set("ACDEFGHIKLMNPQRSTVWY")
+
+    if seq_set.issubset(dna_bases):
+        seq_type = "DNA"
+    elif seq_set.issubset(rna_bases) and "U" in seq_set:
+        seq_type = "RNA"
+    elif seq_set.issubset(protein_bases):
+        seq_type = "Protein"
+    else:
+        st.error("Invalid sequence characters detected.")
+        return None, None, []
+
+    gc_content = gc_fraction(seq) * 100 if seq_type in ["DNA", "RNA"] else None
+    program = "blastn" if seq_type in ["DNA", "RNA"] else "blastp"
+    database = "nt" if seq_type in ["DNA", "RNA"] else "nr"
+    gene_matches = []
+
+    try:
+        result_handle = NCBIWWW.qblast(
+            program=program, database=database, sequence=seq, hitlist_size=5
+        )
+        blast_xml = result_handle.read()
+        result_handle.close()
+        root = ET.fromstring(blast_xml)
+        for hit in root.findall(".//Hit")[:5]:
+            accession_elem = hit.find("Hit_accession")
+            accession_id = (
+                accession_elem.text if accession_elem is not None else "N/A"
+            )
+            title_elem = hit.find("Hit_def")
+            title = (
+                title_elem.text if title_elem is not None else "Unknown Gene"
+            )
+            hsp = hit.find(".//Hsp")
+            hit_gc, pct_match = None, 0.0
+            if hsp is not None:
+                identity_elem = hsp.find("Hsp_identity")
+                align_len_elem = hsp.find("Hsp_align-len")
+                if (
+                    identity_elem is not None
+                    and align_len_elem is not None
+                    and float(align_len_elem.text) > 0
+                ):
+                    pct_match = (
+                        float(identity_elem.text)
+                        / float(align_len_elem.text)
+                    ) * 100
+                hseq_elem = hsp.find("Hsp_hseq")
+                if (
+                    hseq_elem is not None
+                    and hseq_elem.text
+                    and seq_type in ["DNA", "RNA"]
+                ):
+                    target_seq = hseq_elem.text.upper().replace("-", "")
+                    if target_seq:
+                        hit_gc = gc_fraction(target_seq) * 100
+            gene_matches.append(
+                {
+                    "Gene Name": title,
+                    "Accession ID": accession_id,
+                    "GC Content (%)": f"{hit_gc:.2f}"
+                    if hit_gc is not None
+                    else "N/A",
+                    "Match Percentage (%)": f"{pct_match:.2f}",
+                }
+            )
+    except Exception as e:
+        st.warning(f"NCBI BLAST query encounter: {e}")
+    return seq_type, gc_content, gene_matches
+
+
+def central_dogma_pipeline(seq: str, seq_type: str):
+    bio_seq = Seq(seq)
+    if seq_type == "DNA":
+        return str(bio_seq.transcribe()), str(bio_seq.translate())
+    elif seq_type == "RNA":
+        return seq, str(bio_seq.translate())
+    return None, seq
+
+
+def find_orfs(dna_seq: str, min_protein_length: int = 15):
+    orfs = []
+    seq_obj = Seq(dna_seq)
+    for strand, target_seq in [
+        ("+", seq_obj),
+        ("-", seq_obj.reverse_complement()),
+    ]:
+        target_str = str(target_seq)
+        total_len = len(target_str)
+        for frame in range(3):
+            translated = target_seq[frame:].translate(to_stop=False)
+            translated_str = str(translated)
+            i = 0
+            while i < len(translated_str):
+                start_idx = translated_str.find("M", i)
+                if start_idx == -1:
+                    break
+                stop_idx = translated_str.find("*", start_idx)
+                if stop_idx == -1:
+                    protein_len = len(translated_str) - start_idx
+                    if protein_len >= min_protein_length:
+                        start_nt = (start_idx * 3) + frame + 1
+                        orfs.append(
+                            {
+                                "Strand": strand,
+                                "Frame": f"Frame +{frame+1}"
+                                if strand == "+"
+                                else f"Frame -{frame+1}",
+                                "Start (nt)": start_nt,
+                                "End (nt)": total_len,
+                                "Length (aa)": protein_len,
+                                "Protein Sequence": translated_str[start_idx:],
+                            }
+                        )
+                    break
+                else:
+                    protein_len = stop_idx - start_idx
+                    if protein_len >= min_protein_length:
+                        start_nt = (start_idx * 3) + frame + 1
+                        end_nt = (stop_idx * 3) + frame + 3
+                        orfs.append(
+                            {
+                                "Strand": strand,
+                                "Frame": f"Frame +{frame+1}"
+                                if strand == "+"
+                                else f"Frame -{frame+1}",
+                                "Start (nt)": start_nt,
+                                "End (nt)": end_nt,
+                                "Length (aa)": protein_len,
+                                "Protein Sequence": translated_str[
+                                    start_idx:stop_idx
+                                ],
+                            }
+                        )
+                    i = stop_idx + 1
+    return orfs
+
+
+def render_orf_diagram(orfs, total_seq_len):
+    """Renders a clean graphical map of all 6 reading frames and detected ORFs."""
+    frames = [
+        "Frame +1",
+        "Frame +2",
+        "Frame +3",
+        "Frame -1",
+        "Frame -2",
+        "Frame -3",
+    ]
+    frame_colors = {
+        "Frame +1": "#38bdf8",
+        "Frame +2": "#818cf8",
+        "Frame +3": "#c084fc",
+        "Frame -1": "#f43f5e",
+        "Frame -2": "#fb923c",
+        "Frame -3": "#facc15",
+    }
+
+    html = f"""
+    <div style="background: rgba(15, 23, 42, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 20px; font-family: monospace;">
+        <div style="font-size: 13px; color: #94a3b8; margin-bottom: 12px; display: flex; justify-content: space-between;">
+            <span><b>6-Frame ORF Graphic Map</b></span>
+            <span>Total Length: {total_seq_len} nt</span>
+        </div>
+        <div style="position: relative; width: 100%;">
+    """
+
+    for f in frames:
+        html += f"""
+        <div style="display: flex; align-items: center; margin-bottom: 8px;">
+            <div style="width: 80px; font-size: 11px; color: #cbd5e1; font-weight: bold;">{f}</div>
+            <div style="position: relative; flex-grow: 1; height: 16px; background: rgba(255,255,255,0.04); border-radius: 4px; border: 1px solid rgba(255,255,255,0.06);">
+        """
+
+        frame_orfs = [o for o in orfs if o["Frame"] == f]
+        for orf in frame_orfs:
+            left_pct = max(0, min(100, (orf["Start (nt)"] / total_seq_len) * 100))
+            width_pct = max(
+                1,
+                min(
+                    100 - left_pct,
+                    ((orf["End (nt)"] - orf["Start (nt)"]) / total_seq_len)
+                    * 100,
+                ),
+            )
+            color = frame_colors.get(f, "#38bdf8")
+
+            html += f"""
+            <div title="ORF: {orf['Start (nt)']} - {orf['End (nt)']} nt ({orf['Length (aa)']} aa)" 
+                 style="position: absolute; left: {left_pct}%; width: {width_pct}%; height: 100%; background: {color}; opacity: 0.85; border-radius: 3px; cursor: pointer; box-shadow: 0 0 8px {color};">
+            </div>
+            """
+
+        html += """
+            </div>
+        </div>
+        """
+
+    html += """
+        </div>
+        <div style="display: flex; gap: 15px; font-size: 11px; color: #94a3b8; margin-top: 15px; justify-content: flex-end;">
+            <span style="display: flex; align-items: center; gap: 5px;"><span style="width:10px; height:10px; background:#38bdf8; display:inline-block; border-radius:2px;"></span> + Frames</span>
+            <span style="display: flex; align-items: center; gap: 5px;"><span style="width:10px; height:10px; background:#f43f5e; display:inline-block; border-radius:2px;"></span> - Frames</span>
+        </div>
+    </div>
+    """
+    components.html(html, height=260, scrolling=False)
+
+
+def fetch_pdb_similar(protein_seq: str):
+    url = "https://search.rcsb.org/rcsbsearch/v2/query"
+    query = {
+        "query": {
+            "type": "terminal",
+            "service": "sequence",
+            "parameters": {
+                "evalue_cutoff": 1,
+                "identity_cutoff": 0.3,
+                "target": "pdb_protein_sequence",
+                "value": protein_seq,
+            },
+        },
+        "return_type": "polymer_entity",
+        "request_options": {
+            "paginate": {"start": 0, "rows": 5},
+            "scoring_strategy": "sequence",
+        },
+    }
+    response = requests.post(url, json=query)
+    pdb_matches = []
+    if response.status_code == 200:
+        for item in response.json().get("result_set", []):
+            full_id = item["identifier"]
+            pdb_id = full_id.split("_")[0][:4]
+            match_pct = item.get("score", 0) * 100
+            if not any(d["PDB ID"] == pdb_id for d in pdb_matches):
+                pdb_matches.append(
+                    {
+                        "PDB ID": pdb_id,
+                        "Sequence Identity (%)": f"{match_pct:.2f}",
+                    }
+                )
+    return pdb_matches
+
+
+def analyze_amino_acids(protein_seq: str):
+    if not protein_seq:
+        return pd.DataFrame()
+    total_aa = len(protein_seq)
+    counts = Counter(protein_seq)
+    valid_counts = {aa: count for aa, count in counts.items() if aa in AA_NAMES}
+    data = [
+        {
+            "Amino Acid": AA_NAMES[aa],
+            "Code": aa,
+            "Count": count,
+            "Percentage (%)": round((count / total_aa) * 100, 2),
+        }
+        for aa, count in Counter(valid_counts).most_common(10)
+    ]
+    return pd.DataFrame(data)
+
+
+def color_protein_sequence_block(seq: str) -> str:
+    bg_colors = {
+        "A": "#80a0f0",
+        "I": "#80a0f0",
+        "L": "#80a0f0",
+        "M": "#80a0f0",
+        "F": "#80a0f0",
+        "W": "#80a0f0",
+        "V": "#80a0f0",
+        "R": "#f01505",
+        "K": "#f01505",
+        "N": "#00ff00",
+        "Q": "#00ff00",
+        "D": "#c000c0",
+        "E": "#c000c0",
+        "C": "#f08080",
+        "G": "#f09040",
+        "P": "#ffff00",
+        "H": "#15a4a4",
+        "Y": "#15a4a4",
+        "S": "#15a400",
+        "T": "#15a400",
+    }
+    styled_html = "<div style='font-family: monospace; font-size: 15px; word-break: break-all; line-height: 2.0; background-color: #222; padding: 14px; border-radius: 6px; letter-spacing: 1px;'>"
+    for aa in seq:
+        bg = bg_colors.get(aa, "#ffffff")
+        text_color = (
+            "#ffffff" if aa in ["R", "K", "S", "T", "D", "E"] else "#000000"
+        )
+        styled_html += f"<span style='background-color: {bg}; color: {text_color}; font-weight: bold; padding: 2px 5px; margin: 1px 0px; display: inline-block; text-align: center; border-radius: 2px;'>{aa}</span>"
+    styled_html += "</div>"
+    return styled_html
+
+
+# Apply Custom Theme CSS
+inject_custom_ui_theme()
+
+# Render Header with Horizontal Interactive Particle DNA Strand & Interactive Wizard Emoji
+render_header_with_horizontal_dna()
+
+st.sidebar.header("Settings")
+user_email = st.sidebar.text_input(
+    "NCBI Entrez Email", value="your.email@example.com"
+)
+Entrez.email = user_email
+swiss_token = st.sidebar.text_input("SWISS-MODEL API Token", type="password", help="Required for background protein structure prediction.")
+
+st.header("Input Sequence")
+st.markdown(
+    "<p style='font-size: 1rem; font-weight: 500; margin-bottom: 0.5rem; color: #e2e8f0;'>Choose Input Method:</p>",
+    unsafe_allow_html=True,
+)
+
+input_option = st.radio(
+    "Choose Input Method:",
+    options=["Raw Sequence / Accession ID", "Upload FASTA File"],
+    horizontal=True,
+    label_visibility="collapsed",
+)
+
+raw_input = ""
+uploaded_file = None
+
+if input_option == "Raw Sequence / Accession ID":
+    raw_input = st.text_area(
+        "Enter Sequence or Accession ID:",
+        value="",
+        placeholder="e.g., NM_000518 or ATGCG...",
+        height=140,
+    )
+else:
+    uploaded_file = st.file_uploader(
+        "Upload FASTA file", type=["fasta", "fas", "fa"]
+    )
+
+if st.button("Run Pipeline", type="primary"):
+    with st.spinner("Processing input sequence..."):
+        sequence = fetch_sequence(raw_input, uploaded_file)
+
+    if not sequence:
+        st.error(
+            "No valid sequence input detected. Please provide a sequence, accession ID, or FASTA file."
+        )
+    else:
+        st.success("Sequence successfully loaded!")
+
+        st.header("Identification & BLAST Analysis")
+        with st.spinner("Analyzing sequence type and querying BLAST..."):
+            seq_type, gc_content, gene_matches = identify_sequence(sequence)
+
+        if seq_type:
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Sequence Type", seq_type)
+            col2.metric(
+                "GC Content",
+                f"{gc_content:.2f}%" if gc_content is not None else "N/A",
+            )
+            col3.metric("Sequence Length", f"{len(sequence)} bp/aa")
+
+            st.subheader("Top 5 Gene Matches (NCBI BLAST)")
+            if gene_matches:
+                df_matches = pd.DataFrame(gene_matches)
+                st.dataframe(df_matches, use_container_width=True)
+            else:
+                st.info("No significant BLAST hits found.")
+
+            st.header("Transcription & Translation")
+            transcript, protein_seq = central_dogma_pipeline(
+                sequence, seq_type
+            )
+
+            if transcript:
+                with st.expander("View mRNA Transcript"):
+                    st.text_area("RNA Sequence", transcript, height=100)
+
+            with st.expander(
+                "View Translated Protein Sequence", expanded=True
+            ):
+                st.markdown(
+                    color_protein_sequence_block(protein_seq),
+                    unsafe_allow_html=True,
+                )
+                st.caption(
+                    "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
+                )
+
+            st.header("Open Reading Frame (ORF) Diagram Map & Sequences")
+            if seq_type in ["DNA", "RNA"]:
+                dna_for_orf = sequence.replace("U", "T")
+
+                with st.spinner("Scanning 6 reading frames for ORFs..."):
+                    orf_list = find_orfs(dna_for_orf, min_protein_length=15)
+
+                if orf_list:
+                    render_orf_diagram(orf_list, len(dna_for_orf))
+
+                    st.subheader("Detected ORFs Sequence Data")
+                    for idx, orf in enumerate(orf_list):
+                        with st.expander(
+                            f"ORF #{idx+1} | Strand: {orf['Strand']} | Frame: {orf['Frame']} | Coordinates: {orf['Start (nt)']} - {orf['End (nt)']} nt | Length: {orf['Length (aa)']} aa"
+                        ):
+                            st.markdown(
+                                f"**Protein Sequence:**", unsafe_allow_html=True
+                            )
+                            st.markdown(
+                                color_protein_sequence_block(
+                                    orf["Protein Sequence"]
+                                ),
+                                unsafe_allow_html=True,
+                            )
+                            st.text_area(
+                                f"Raw Protein Sequence #{idx+1}",
+                                orf["Protein Sequence"],
+                                height=80,
+                                key=f"orf_seq_{idx}",
+                            )
+                else:
+                    st.info(
+                        "No Open Reading Frames found meeting the minimum length criteria."
+                    )
+            else:
+                st.info(
+                    "ORF scanning is available for DNA and RNA input sequence types."
+                )
+
+            st.header("Protein Analysis")
+            col_a, col_b = st.columns(2)
+
+            with col_a:
+                st.subheader("Top 10 Amino Acids Frequency")
+                df_aa = analyze_amino_acids(protein_seq)
+                if not df_aa.empty:
+                    st.dataframe(df_aa, use_container_width=True)
+                else:
+                    st.write("No amino acid data available.")
+
+            with col_b:
+                st.subheader("Top PDB Sequence Matches")
+                with st.spinner("Searching RCSB PDB..."):
+                    matches = fetch_pdb_similar(protein_seq)
+                if matches:
+                    st.dataframe(
+                        pd.DataFrame(matches), use_container_width=True
+                    )
+                else:
+                    st.write("No significant RCSB PDB matches found.")
+
+            # --- SWISS-MODEL AUTOMATED BACKGROUND PREDICTION ---
+            st.header("Protein Structure Prediction (SWISS-MODEL API)")
+            
+            if protein_seq:
+                if not swiss_token:
+                    st.warning("⚠️ Please provide your SWISS-MODEL API Token in the sidebar to enable background prediction.")
+                else:
+                    with st.spinner("Submitting sequence to SWISS-MODEL and generating homology model (this may take a few minutes)..."):
+                        try:
+                            headers = {
+                                "Authorization": f"Token {swiss_token}",
+                                "Content-Type": "application/json",
+                                "Accept": "application/json"
+                            }
+                            
+                            clean_protein_seq = protein_seq.replace("*", "").strip()
+                            
+                            data = {
+                                "target_sequences": [clean_protein_seq], 
+                                "project_title": "ProtCraft Automated Job"
+                            }
+                            res = requests.post("https://swissmodel.expasy.org/automodel/", headers=headers, json=data)
+                            
+                            if res.status_code in [200, 201, 202]:
+                                resp_json = res.json()
+                                project_id = resp_json.get("project_id")
+                                status = resp_json.get("status", "QUEUED")
+                                
+                                if not project_id:
+                                    st.error(f"API did not return a project_id. Full response: {resp_json}")
+                                else:
+                                    status_placeholder = st.empty()
+                                    poll_url = f"https://swissmodel.expasy.org/project/{project_id}/models/summary/"
+                                    
+                                    poll_req = None
+                                    while status in ["RUNNING", "PENDING", "QUEUED"]:
+                                        status_placeholder.info(f"SWISS-MODEL API Status: {status} (ID: {project_id})... Polling server (Please wait).")
+                                        time.sleep(10)
+                                        
+                                        poll_req = requests.get(poll_url, headers=headers)
+                                        if poll_req.status_code == 200:
+                                            status = poll_req.json().get("status", "UNKNOWN")
+                                        else:
+                                            st.error(f"Polling error {poll_req.status_code}: {poll_req.text}")
+                                            status = "API_ERROR"
+                                            break
+                                    
+                                    status_placeholder.empty()
+                                    
+                                    if status == "COMPLETED" and poll_req:
+                                        models = poll_req.json().get("models", [])
+                                        if models:
+                                            st.success("Homology model successfully generated!")
+                                            
+                                            pdb_url = models[0].get("coordinates_url") 
+                                            if not pdb_url:
+                                                pdb_url = f"https://swissmodel.expasy.org/project/{project_id}/models/01.pdb"
+                                                
+                                            # Download the file
+                                            pdb_res = requests.get(pdb_url, headers=headers)
+                                            if pdb_res.status_code == 200:
+                                                try:
+                                                    pdb_bytes = gzip.decompress(pdb_res.content)
+                                                    pdb_text = pdb_bytes.decode('utf-8')
+                                                except Exception:
+                                                    pdb_text = pdb_res.text
+                                                
+                                                if "ATOM" in pdb_text or "HEADER" in pdb_text:
+                                                    render_protein_3d_viewer(pdb_text, height=500)
+                                                else:
+                                                    st.error("SWISS-MODEL returned an invalid file (not a PDB).")
+                                                    st.code(pdb_text[:500])
+                                            else:
+                                                st.error(f"Failed to download the generated PDB coordinate file. (Code: {pdb_res.status_code})")
+                                        else:
+                                            st.error("SWISS-MODEL job finished, but no suitable template was found to generate a valid model.")
+                                    elif status in ["FAILED", "UNKNOWN", "API_ERROR"]:
+                                        st.error(f"SWISS-MODEL job stopped with status: {status}")
+                            else:
+                                st.error(f"Failed to submit job. Please check your API Token and sequence. (Status Code: {res.status_code})\n\n{res.text}")
+                        except Exception as e:
+                            st.error(f"Failed to connect to SWISS-MODEL API: {e}")
+            else:
+                st.warning("No protein sequence available for modeling.")
