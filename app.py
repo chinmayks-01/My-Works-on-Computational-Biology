@@ -947,7 +947,16 @@ else:
         "Upload FASTA file", type=["fasta", "fas", "fa"]
     )
 
-if st.button("Run Pipeline", type="primary"):
+
+# --- REFACTORED STATE AND PIPELINE EXECUTION ---
+
+# Initialize persistent state variables
+if "pipeline_results" not in st.session_state:
+    st.session_state.pipeline_results = None
+
+run_clicked = st.button("Run Pipeline", type="primary")
+
+if run_clicked:
     with st.spinner("Processing input sequence..."):
         sequence = fetch_sequence(raw_input, uploaded_file)
 
@@ -955,191 +964,203 @@ if st.button("Run Pipeline", type="primary"):
         st.error(
             "No valid sequence input detected. Please provide a sequence, accession ID, or FASTA file."
         )
+        st.session_state.pipeline_results = None
     else:
-        st.success("Sequence successfully loaded!")
+        st.session_state.pipeline_results = {
+            "sequence": sequence,
+            "raw_input": raw_input,
+        }
 
-        st.header("Identification & BLAST Analysis")
-        with st.spinner("Analyzing sequence type and querying BLAST..."):
-            seq_type, gc_content, gene_matches = identify_sequence(sequence)
+# Display results if a sequence has been submitted
+if st.session_state.pipeline_results:
+    sequence = st.session_state.pipeline_results["sequence"]
+    st.success("Sequence successfully loaded!")
 
-        if seq_type:
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Sequence Type", seq_type)
-            col2.metric(
-                "GC Content",
-                f"{gc_content:.2f}%" if gc_content is not None else "N/A",
+    st.header("Identification & BLAST Analysis")
+    with st.spinner("Analyzing sequence type and querying BLAST..."):
+        seq_type, gc_content, gene_matches = identify_sequence(sequence)
+
+    if seq_type:
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Sequence Type", seq_type)
+        col2.metric(
+            "GC Content",
+            f"{gc_content:.2f}%" if gc_content is not None else "N/A",
+        )
+        col3.metric("Sequence Length", f"{len(sequence)} bp/aa")
+
+        st.subheader("Top 5 Gene Matches (NCBI BLAST)")
+        if gene_matches:
+            df_matches = pd.DataFrame(gene_matches)
+            st.dataframe(df_matches, use_container_width=True)
+        else:
+            st.info("No significant BLAST hits found.")
+
+        st.header("Transcription & Translation")
+        transcript, protein_seq = central_dogma_pipeline(
+            sequence, seq_type
+        )
+
+        if transcript:
+            with st.expander("View mRNA Transcript"):
+                st.text_area("RNA Sequence", transcript, height=100)
+
+        with st.expander(
+            "View Translated Protein Sequence", expanded=True
+        ):
+            st.markdown(
+                color_protein_sequence_block(protein_seq),
+                unsafe_allow_html=True,
             )
-            col3.metric("Sequence Length", f"{len(sequence)} bp/aa")
-
-            st.subheader("Top 5 Gene Matches (NCBI BLAST)")
-            if gene_matches:
-                df_matches = pd.DataFrame(gene_matches)
-                st.dataframe(df_matches, use_container_width=True)
-            else:
-                st.info("No significant BLAST hits found.")
-
-            st.header("Transcription & Translation")
-            transcript, protein_seq = central_dogma_pipeline(
-                sequence, seq_type
+            st.caption(
+                "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
             )
 
-            if transcript:
-                with st.expander("View mRNA Transcript"):
-                    st.text_area("RNA Sequence", transcript, height=100)
+        st.header("Open Reading Frame (ORF) Diagram Map & Sequences")
+        if seq_type in ["DNA", "RNA"]:
+            dna_for_orf = sequence.replace("U", "T")
 
-            with st.expander(
-                "View Translated Protein Sequence", expanded=True
-            ):
-                st.markdown(
-                    color_protein_sequence_block(protein_seq),
-                    unsafe_allow_html=True,
-                )
-                st.caption(
-                    "🟦 Hydrophobic | 🟥 Basic | 🟩 Polar | 🟪 Acidic | 🟧 Glycine | 🟨 Proline"
-                )
+            with st.spinner("Scanning 6 reading frames for ORFs..."):
+                orf_list = find_orfs(dna_for_orf, min_protein_length=15)
 
-            st.header("Open Reading Frame (ORF) Diagram Map & Sequences")
-            if seq_type in ["DNA", "RNA"]:
-                dna_for_orf = sequence.replace("U", "T")
+            if orf_list:
+                render_orf_diagram(orf_list, len(dna_for_orf))
 
-                with st.spinner("Scanning 6 reading frames for ORFs..."):
-                    orf_list = find_orfs(dna_for_orf, min_protein_length=15)
-
-                if orf_list:
-                    render_orf_diagram(orf_list, len(dna_for_orf))
-
-                    st.subheader("Detected ORFs Sequence Data")
-                    for idx, orf in enumerate(orf_list):
-                        with st.expander(
-                            f"ORF #{idx+1} | Strand: {orf['Strand']} | Frame: {orf['Frame']} | Coordinates: {orf['Start (nt)']} - {orf['End (nt)']} nt | Length: {orf['Length (aa)']} aa"
-                        ):
-                            st.markdown(
-                                f"**Protein Sequence:**", unsafe_allow_html=True
-                            )
-                            st.markdown(
-                                color_protein_sequence_block(
-                                    orf["Protein Sequence"]
-                                ),
-                                unsafe_allow_html=True,
-                            )
-                            st.text_area(
-                                f"Raw Protein Sequence #{idx+1}",
-                                orf["Protein Sequence"],
-                                height=80,
-                                key=f"orf_seq_{idx}",
-                            )
-                else:
-                    st.info(
-                        "No Open Reading Frames found meeting the minimum length criteria."
-                    )
+                st.subheader("Detected ORFs Sequence Data")
+                for idx, orf in enumerate(orf_list):
+                    with st.expander(
+                        f"ORF #{idx+1} | Strand: {orf['Strand']} | Frame: {orf['Frame']} | Coordinates: {orf['Start (nt)']} - {orf['End (nt)']} nt | Length: {orf['Length (aa)']} aa"
+                    ):
+                        st.markdown(
+                            f"**Protein Sequence:**", unsafe_allow_html=True
+                        )
+                        st.markdown(
+                            color_protein_sequence_block(
+                                orf["Protein Sequence"]
+                            ),
+                            unsafe_allow_html=True,
+                        )
+                        st.text_area(
+                            f"Raw Protein Sequence #{idx+1}",
+                            orf["Protein Sequence"],
+                            height=80,
+                            key=f"orf_seq_{idx}",
+                        )
             else:
                 st.info(
-                    "ORF scanning is available for DNA and RNA input sequence types."
+                    "No Open Reading Frames found meeting the minimum length criteria."
                 )
+        else:
+            st.info(
+                "ORF scanning is available for DNA and RNA input sequence types."
+            )
 
-            st.header("Protein Analysis")
-            col_a, col_b = st.columns(2)
+        st.header("Protein Analysis")
+        col_a, col_b = st.columns(2)
 
-            with col_a:
-                st.subheader("Top 10 Amino Acids Frequency")
-                df_aa = analyze_amino_acids(protein_seq)
-                if not df_aa.empty:
-                    st.dataframe(df_aa, use_container_width=True)
-                else:
-                    st.write("No amino acid data available.")
-
-            with col_b:
-                st.subheader("Top PDB Sequence Matches")
-                with st.spinner("Searching RCSB PDB..."):
-                    matches = fetch_pdb_similar(protein_seq)
-                if matches:
-                    st.dataframe(
-                        pd.DataFrame(matches), use_container_width=True
-                    )
-                else:
-                    st.write("No significant RCSB PDB matches found.")
-
-            # --- SWISS-MODEL AUTOMATED BACKGROUND PREDICTION ---
-            st.header("Protein Structure Prediction (SWISS-MODEL API)")
-            
-            if protein_seq:
-                if not swiss_token:
-                    st.warning("⚠️ Please provide your SWISS-MODEL API Token in the sidebar to enable background prediction.")
-                else:
-                    with st.spinner("Submitting sequence to SWISS-MODEL and generating homology model (this may take a few minutes)..."):
-                        try:
-                            headers = {
-                                "Authorization": f"Token {swiss_token}",
-                                "Content-Type": "application/json",
-                                "Accept": "application/json"
-                            }
-                            
-                            clean_protein_seq = protein_seq.replace("*", "").strip()
-                            
-                            data = {
-                                "target_sequences": [clean_protein_seq], 
-                                "project_title": "ProtCraft Automated Job"
-                            }
-                            res = requests.post("https://swissmodel.expasy.org/automodel/", headers=headers, json=data)
-                            
-                            if res.status_code in [200, 201, 202]:
-                                resp_json = res.json()
-                                project_id = resp_json.get("project_id")
-                                status = resp_json.get("status", "QUEUED")
-                                
-                                if not project_id:
-                                    st.error(f"API did not return a project_id. Full response: {resp_json}")
-                                else:
-                                    status_placeholder = st.empty()
-                                    poll_url = f"https://swissmodel.expasy.org/project/{project_id}/models/summary/"
-                                    
-                                    poll_req = None
-                                    while status in ["RUNNING", "PENDING", "QUEUED"]:
-                                        status_placeholder.info(f"SWISS-MODEL API Status: {status} (ID: {project_id})... Polling server (Please wait).")
-                                        time.sleep(10)
-                                        
-                                        poll_req = requests.get(poll_url, headers=headers)
-                                        if poll_req.status_code == 200:
-                                            status = poll_req.json().get("status", "UNKNOWN")
-                                        else:
-                                            st.error(f"Polling error {poll_req.status_code}: {poll_req.text}")
-                                            status = "API_ERROR"
-                                            break
-                                    
-                                    status_placeholder.empty()
-                                    
-                                    if status == "COMPLETED" and poll_req:
-                                        models = poll_req.json().get("models", [])
-                                        if models:
-                                            st.success("Homology model successfully generated!")
-                                            
-                                            pdb_url = models[0].get("coordinates_url") 
-                                            if not pdb_url:
-                                                pdb_url = f"https://swissmodel.expasy.org/project/{project_id}/models/01.pdb"
-                                                
-                                            # Download the file
-                                            pdb_res = requests.get(pdb_url, headers=headers)
-                                            if pdb_res.status_code == 200:
-                                                try:
-                                                    pdb_bytes = gzip.decompress(pdb_res.content)
-                                                    pdb_text = pdb_bytes.decode('utf-8')
-                                                except Exception:
-                                                    pdb_text = pdb_res.text
-                                                
-                                                if "ATOM" in pdb_text or "HEADER" in pdb_text:
-                                                    render_protein_3d_viewer(pdb_text, height=500)
-                                                else:
-                                                    st.error("SWISS-MODEL returned an invalid file (not a PDB).")
-                                                    st.code(pdb_text[:500])
-                                            else:
-                                                st.error(f"Failed to download the generated PDB coordinate file. (Code: {pdb_res.status_code})")
-                                        else:
-                                            st.error("SWISS-MODEL job finished, but no suitable template was found to generate a valid model.")
-                                    elif status in ["FAILED", "UNKNOWN", "API_ERROR"]:
-                                        st.error(f"SWISS-MODEL job stopped with status: {status}")
-                            else:
-                                st.error(f"Failed to submit job. Please check your API Token and sequence. (Status Code: {res.status_code})\n\n{res.text}")
-                        except Exception as e:
-                            st.error(f"Failed to connect to SWISS-MODEL API: {e}")
+        with col_a:
+            st.subheader("Top 10 Amino Acids Frequency")
+            df_aa = analyze_amino_acids(protein_seq)
+            if not df_aa.empty:
+                st.dataframe(df_aa, use_container_width=True)
             else:
-                st.warning("No protein sequence available for modeling.")
+                st.write("No amino acid data available.")
+
+        with col_b:
+            st.subheader("Top PDB Sequence Matches")
+            with st.spinner("Searching RCSB PDB..."):
+                matches = fetch_pdb_similar(protein_seq)
+            if matches:
+                st.dataframe(
+                    pd.DataFrame(matches), use_container_width=True
+                )
+            else:
+                st.write("No significant RCSB PDB matches found.")
+
+        # --- SWISS-MODEL AUTOMATED BACKGROUND PREDICTION ---
+        st.header("Protein Structure Prediction (SWISS-MODEL API)")
+        
+        if protein_seq:
+            if not swiss_token:
+                st.warning("⚠️ Please provide your SWISS-MODEL API Token in the sidebar to enable background prediction.")
+            else:
+                clean_protein_seq = protein_seq.replace("*", "").strip()
+                
+                # Minimum length check for SWISS-MODEL (30 aa)
+                if len(clean_protein_seq) < 30:
+                    st.error("Protein sequence is too short for homology modeling (minimum length is ~30 amino acids).")
+                else:
+                    status_placeholder = st.empty()
+                    status_placeholder.info("Submitting job to SWISS-MODEL API...")
+                    
+                    try:
+                        headers = {
+                            "Authorization": f"Token {swiss_token}",
+                            "Content-Type": "application/json",
+                            "Accept": "application/json"
+                        }
+                        
+                        payload = {
+                            "target_sequences": [clean_protein_seq], 
+                            "project_title": "ProtCraft Automated Job"
+                        }
+                        
+                        # Note: Endpoint without trailing slash
+                        res = requests.post("https://swissmodel.expasy.org/automodel", headers=headers, json=payload)
+                        
+                        if res.status_code in [200, 201, 202]:
+                            resp_json = res.json()
+                            project_id = resp_json.get("project_id")
+                            status = resp_json.get("status", "QUEUED")
+                            
+                            if not project_id:
+                                status_placeholder.error(f"API did not return a project_id. Response: {resp_json}")
+                            else:
+                                poll_url = f"https://swissmodel.expasy.org/project/{project_id}/models/summary/"
+                                poll_req = None
+                                
+                                while status in ["RUNNING", "PENDING", "QUEUED"]:
+                                    status_placeholder.info(f"SWISS-MODEL Status: {status} (Project ID: {project_id}). Polling server every 10 seconds...")
+                                    time.sleep(10)
+                                    
+                                    poll_req = requests.get(poll_url, headers=headers)
+                                    if poll_req.status_code == 200:
+                                        status = poll_req.json().get("status", "UNKNOWN")
+                                    else:
+                                        status_placeholder.error(f"Polling error {poll_req.status_code}: {poll_req.text}")
+                                        status = "API_ERROR"
+                                        break
+                                
+                                if status == "COMPLETED" and poll_req:
+                                    status_placeholder.success("Homology model successfully generated!")
+                                    models = poll_req.json().get("models", [])
+                                    if models:
+                                        pdb_url = models[0].get("coordinates_url") 
+                                        if not pdb_url:
+                                            pdb_url = f"https://swissmodel.expasy.org/project/{project_id}/models/01.pdb"
+                                            
+                                        pdb_res = requests.get(pdb_url, headers=headers)
+                                        if pdb_res.status_code == 200:
+                                            try:
+                                                pdb_bytes = gzip.decompress(pdb_res.content)
+                                                pdb_text = pdb_bytes.decode('utf-8')
+                                            except Exception:
+                                                pdb_text = pdb_res.text
+                                            
+                                            if "ATOM" in pdb_text or "HEADER" in pdb_text:
+                                                render_protein_3d_viewer(pdb_text, height=500)
+                                            else:
+                                                st.error("SWISS-MODEL returned an invalid coordinate file.")
+                                                st.code(pdb_text[:500])
+                                        else:
+                                            st.error(f"Failed to download generated PDB file. Status Code: {pdb_res.status_code}")
+                                    else:
+                                        st.error("SWISS-MODEL job completed, but no suitable template structural models could be found.")
+                                elif status in ["FAILED", "UNKNOWN", "API_ERROR"]:
+                                    status_placeholder.error(f"SWISS-MODEL job stopped with status: {status}")
+                        else:
+                            status_placeholder.error(f"Failed to submit job. Status Code: {res.status_code}\nResponse: {res.text}")
+                    except Exception as e:
+                        status_placeholder.error(f"Connection error with SWISS-MODEL API: {e}")
+        else:
+            st.warning("No protein sequence available for modeling.")
