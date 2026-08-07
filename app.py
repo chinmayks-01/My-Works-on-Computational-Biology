@@ -45,7 +45,7 @@ AA_NAMES = {
 
 
 def inject_custom_ui_theme():
-    """Injects dynamic breathing background, glassmorphism UI, equal-sized side-by-side radio cards, and Antigravity interactive particle field."""
+    """Injects dynamic breathing background, glassmorphism UI, equal-sized side-by-side radio cards, and Wavy Antigravity interactive particle field."""
     css = """
     <style>
     @keyframes breathingGradient {
@@ -175,7 +175,7 @@ def inject_custom_ui_theme():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-    # Injecting Antigravity Interactive Vector Canvas Script
+    # Injecting Wavy Antigravity Script with distance opacity falloff
     antigravity_js = """
     <script>
     (function() {
@@ -206,7 +206,7 @@ def inject_custom_ui_theme():
             resize();
             parentDoc.defaultView.addEventListener('resize', resize);
 
-            const mouse = { x: -1000, y: -1000, targetX: -1000, targetY: -1000, radius: 220 };
+            const mouse = { x: -1000, y: -1000, targetX: -1000, targetY: -1000, radius: 240 };
 
             parentDoc.addEventListener('mousemove', (e) => {
                 mouse.targetX = e.clientX;
@@ -219,11 +219,13 @@ def inject_custom_ui_theme():
             });
 
             const particles = [];
-            const particleCount = 280;
+            const particleCount = 380;
             const colors = [
                 '#38bdf8', '#60a5fa', '#818cf8', '#a78bfa', 
                 '#f472b6', '#fb923c', '#facc15', '#34d399'
             ];
+
+            let time = 0;
 
             class Particle {
                 constructor() {
@@ -235,37 +237,45 @@ def inject_custom_ui_theme():
                     this.originY = Math.random() * height;
                     this.x = this.originX;
                     this.y = this.originY;
-                    this.vx = (Math.random() - 0.5) * 0.3;
-                    this.vy = (Math.random() - 0.5) * 0.3;
-                    this.length = Math.random() * 8 + 4;
-                    this.angle = Math.random() * Math.PI * 2;
+                    this.vx = 0;
+                    this.vy = 0;
+                    this.length = Math.random() * 3 + 2; // Reduced particle size
+                    this.angle = 0;
                     this.color = colors[Math.floor(Math.random() * colors.length)];
-                    this.alpha = Math.random() * 0.6 + 0.25;
-                    this.friction = 0.92;
-                    this.spring = 0.015;
+                    this.baseAlpha = Math.random() * 0.7 + 0.3;
+                    this.alpha = 0.05;
+                    this.friction = 0.90;
+                    this.spring = 0.02;
                 }
 
-                update() {
+                update(t) {
                     // Smooth mouse tracking
                     mouse.x += (mouse.targetX - mouse.x) * 0.1;
                     mouse.y += (mouse.targetY - mouse.y) * 0.1;
 
-                    // Repulsion / Antigravity physics
+                    // Wavy surface displacement
+                    const waveX = Math.sin(this.originY * 0.008 + t * 1.2) * 16;
+                    const waveY = Math.cos(this.originX * 0.008 + t * 1.2) * 16;
+                    const targetX = this.originX + waveX;
+                    const targetY = this.originY + waveY;
+
+                    // Distance to cursor calculations
                     const dx = this.x - mouse.x;
                     const dy = this.y - mouse.y;
                     const dist = Math.hypot(dx, dy);
 
                     if (dist < mouse.radius && dist > 0) {
-                        const force = (1 - dist / mouse.radius) * 12;
+                        const force = (1 - dist / mouse.radius) * 10;
                         const angle = Math.atan2(dy, dx);
                         this.vx += Math.cos(angle) * force;
                         this.vy += Math.sin(angle) * force;
-                        this.angle = angle; // Align vector along force
+                        this.angle = angle;
                     } else {
-                        // Return to ambient motion
-                        this.vx += (this.originX - this.x) * this.spring;
-                        this.vy += (this.originY - this.y) * this.spring;
-                        this.angle += 0.01;
+                        // Return to wavy position
+                        this.vx += (targetX - this.x) * this.spring;
+                        this.vy += (targetY - this.y) * this.spring;
+                        // Wavy vector orientation
+                        this.angle = Math.sin(this.x * 0.004 + t) + Math.cos(this.y * 0.004 + t);
                     }
 
                     this.vx *= this.friction;
@@ -273,6 +283,12 @@ def inject_custom_ui_theme():
 
                     this.x += this.vx;
                     this.y += this.vy;
+
+                    // Distance transparency falloff (Particles away from cursor fade out)
+                    const maxVisibilityRadius = 420;
+                    let opacityFactor = Math.max(0.04, 1 - (dist / maxVisibilityRadius));
+                    opacityFactor = Math.pow(opacityFactor, 1.8); // Smooth falloff curve
+                    this.alpha = opacityFactor * this.baseAlpha;
                 }
 
                 draw() {
@@ -281,7 +297,7 @@ def inject_custom_ui_theme():
                     ctx.rotate(this.angle);
                     ctx.globalAlpha = this.alpha;
                     ctx.strokeStyle = this.color;
-                    ctx.lineWidth = 2;
+                    ctx.lineWidth = 1.2; // Thinner stroke
                     ctx.lineCap = 'round';
 
                     ctx.beginPath();
@@ -299,9 +315,10 @@ def inject_custom_ui_theme():
 
             function animate() {
                 ctx.clearRect(0, 0, width, height);
+                time += 0.015;
 
                 for (let i = 0; i < particles.length; i++) {
-                    particles[i].update();
+                    particles[i].update(time);
                     particles[i].draw();
                 }
 
