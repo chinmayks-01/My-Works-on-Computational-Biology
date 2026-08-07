@@ -5,7 +5,7 @@ import time
 import urllib.parse
 import xml.etree.ElementTree as ET
 from textwrap import dedent
-import gzip  # Added to handle compressed SWISS-MODEL files
+import gzip
 
 from Bio import Entrez, SeqIO
 from Bio.Blast import NCBIWWW
@@ -45,7 +45,7 @@ AA_NAMES = {
 
 
 def inject_custom_ui_theme():
-    """Injects dynamic breathing background, glassmorphism UI, equal-sized side-by-side radio cards, and Wavy Antigravity interactive particle field."""
+    """Injects dynamic breathing background, glassmorphism UI, and equal-sized side-by-side radio cards."""
     css = """
     <style>
     @keyframes breathingGradient {
@@ -175,165 +175,195 @@ def inject_custom_ui_theme():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-    # Injecting Wavy Antigravity Script with distance opacity falloff
-    antigravity_js = """
+
+def render_header_with_horizontal_dna():
+    """Renders page header alongside an interactive 3D particle horizontal rotating DNA strand."""
+    header_html = """
+    <style>
+    .header-wrapper {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin-bottom: 1rem;
+        gap: 20px;
+    }
+    @keyframes titleTextGlow {
+        0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+        50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
+        100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+    }
+    .title-glow-text {
+        background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: titleTextGlow 4s ease-in-out infinite;
+        display: inline-block;
+    }
+    .dna-container {
+        flex: 1;
+        max-width: 580px;
+        height: 120px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+    }
+    #horizontalDnaCanvas {
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+    }
+    </style>
+    <div class="header-wrapper">
+        <div style="flex-shrink: 0;">
+            <h1 style='font-size: 2.6rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
+                Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
+            </h1>
+        </div>
+        <div class="dna-container">
+            <canvas id="horizontalDnaCanvas"></canvas>
+        </div>
+    </div>
+
     <script>
     (function() {
-        try {
-            const parentDoc = window.parent.document;
-            let canvas = parentDoc.getElementById('antigravity-canvas');
-            
-            if (!canvas) {
-                canvas = parentDoc.createElement('canvas');
-                canvas.id = 'antigravity-canvas';
-                canvas.style.position = 'fixed';
-                canvas.style.top = '0';
-                canvas.style.left = '0';
-                canvas.style.width = '100vw';
-                canvas.style.height = '100vh';
-                canvas.style.pointerEvents = 'none';
-                canvas.style.zIndex = '0';
-                parentDoc.body.appendChild(canvas);
+        const canvas = document.getElementById('horizontalDnaCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        function setCanvasDimensions() {
+            canvas.width = canvas.parentElement.clientWidth || 550;
+            canvas.height = 120;
+        }
+        setCanvasDimensions();
+        window.addEventListener('resize', setCanvasDimensions);
+
+        let angle = 0;
+        let mouseX = 0, mouseY = 0;
+        let targetMouseX = 0, targetMouseY = 0;
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            targetMouseX = (e.clientX - rect.left - canvas.width / 2) * 0.002;
+            targetMouseY = (e.clientY - rect.top - canvas.height / 2) * 0.002;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            targetMouseX = 0;
+            targetMouseY = 0;
+        });
+
+        const numNodes = 32;
+        const strandRadius = 28;
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            mouseX += (targetMouseX - mouseX) * 0.08;
+            mouseY += (targetMouseY - mouseY) * 0.08;
+
+            angle += 0.022 + mouseX * 0.05;
+
+            const length = Math.min(canvas.width - 20, 520);
+            const startX = (canvas.width - length) / 2;
+            const stepX = length / numNodes;
+            const cy = canvas.height / 2;
+
+            let renderQueue = [];
+
+            for (let i = 0; i <= numNodes; i++) {
+                let x = startX + i * stepX;
+                let nodeAngle = angle + i * 0.24;
+
+                let y1 = Math.sin(nodeAngle) * strandRadius;
+                let z1 = Math.cos(nodeAngle) * strandRadius;
+
+                let y2 = Math.sin(nodeAngle + Math.PI) * strandRadius;
+                let z2 = Math.cos(nodeAngle + Math.PI) * strandRadius;
+
+                // Mouse Y tilt 3D rotation
+                let tiltY1 = y1 * Math.cos(mouseY) - z1 * Math.sin(mouseY);
+                let tiltZ1 = y1 * Math.sin(mouseY) + z1 * Math.cos(mouseY);
+
+                let tiltY2 = y2 * Math.cos(mouseY) - z2 * Math.sin(mouseY);
+                let tiltZ2 = y2 * Math.sin(mouseY) + z2 * Math.cos(mouseY);
+
+                let py1 = cy + tiltY1;
+                let py2 = cy + tiltY2;
+
+                let scale1 = 1 + tiltZ1 / 140;
+                let scale2 = 1 + tiltZ2 / 140;
+
+                // Base-pair connection rung
+                renderQueue.push({
+                    type: 'rung',
+                    x1: x, y1: py1, z1: tiltZ1,
+                    x2: x, y2: py2, z2: tiltZ2,
+                    avgZ: (tiltZ1 + tiltZ2) / 2
+                });
+
+                // Strand 1 node
+                renderQueue.push({
+                    type: 'node',
+                    x: x, y: py1, z: tiltZ1, scale: scale1,
+                    color: '#38bdf8'
+                });
+
+                // Strand 2 node
+                renderQueue.push({
+                    type: 'node',
+                    x: x, y: py2, z: tiltZ2, scale: scale2,
+                    color: '#c084fc'
+                });
             }
 
-            const ctx = canvas.getContext('2d');
-            let width, height;
+            // Depth sorting (z-index ordering)
+            renderQueue.sort((a, b) => (a.avgZ !== undefined ? a.avgZ : a.z) - (b.avgZ !== undefined ? b.avgZ : b.z));
 
-            function resize() {
-                width = canvas.width = parentDoc.documentElement.clientWidth || window.innerWidth;
-                height = canvas.height = parentDoc.documentElement.clientHeight || window.innerHeight;
-            }
-            resize();
-            parentDoc.defaultView.addEventListener('resize', resize);
-
-            const mouse = { x: -1000, y: -1000, targetX: -1000, targetY: -1000, radius: 240 };
-
-            parentDoc.addEventListener('mousemove', (e) => {
-                mouse.targetX = e.clientX;
-                mouse.targetY = e.clientY;
-            });
-
-            parentDoc.addEventListener('mouseleave', () => {
-                mouse.targetX = -1000;
-                mouse.targetY = -1000;
-            });
-
-            const particles = [];
-            const particleCount = 380;
-            const colors = [
-                '#38bdf8', '#60a5fa', '#818cf8', '#a78bfa', 
-                '#f472b6', '#fb923c', '#facc15', '#34d399'
-            ];
-
-            let time = 0;
-
-            class Particle {
-                constructor() {
-                    this.init();
-                }
-
-                init() {
-                    this.originX = Math.random() * width;
-                    this.originY = Math.random() * height;
-                    this.x = this.originX;
-                    this.y = this.originY;
-                    this.vx = 0;
-                    this.vy = 0;
-                    this.length = Math.random() * 3 + 2; // Reduced particle size
-                    this.angle = 0;
-                    this.color = colors[Math.floor(Math.random() * colors.length)];
-                    this.baseAlpha = Math.random() * 0.7 + 0.3;
-                    this.alpha = 0.05;
-                    this.friction = 0.90;
-                    this.spring = 0.02;
-                }
-
-                update(t) {
-                    // Smooth mouse tracking
-                    mouse.x += (mouse.targetX - mouse.x) * 0.1;
-                    mouse.y += (mouse.targetY - mouse.y) * 0.1;
-
-                    // Wavy surface displacement
-                    const waveX = Math.sin(this.originY * 0.008 + t * 1.2) * 16;
-                    const waveY = Math.cos(this.originX * 0.008 + t * 1.2) * 16;
-                    const targetX = this.originX + waveX;
-                    const targetY = this.originY + waveY;
-
-                    // Distance to cursor calculations
-                    const dx = this.x - mouse.x;
-                    const dy = this.y - mouse.y;
-                    const dist = Math.hypot(dx, dy);
-
-                    if (dist < mouse.radius && dist > 0) {
-                        const force = (1 - dist / mouse.radius) * 10;
-                        const angle = Math.atan2(dy, dx);
-                        this.vx += Math.cos(angle) * force;
-                        this.vy += Math.sin(angle) * force;
-                        this.angle = angle;
-                    } else {
-                        // Return to wavy position
-                        this.vx += (targetX - this.x) * this.spring;
-                        this.vy += (targetY - this.y) * this.spring;
-                        // Wavy vector orientation
-                        this.angle = Math.sin(this.x * 0.004 + t) + Math.cos(this.y * 0.004 + t);
-                    }
-
-                    this.vx *= this.friction;
-                    this.vy *= this.friction;
-
-                    this.x += this.vx;
-                    this.y += this.vy;
-
-                    // Distance transparency falloff (Particles away from cursor fade out)
-                    const maxVisibilityRadius = 420;
-                    let opacityFactor = Math.max(0.04, 1 - (dist / maxVisibilityRadius));
-                    opacityFactor = Math.pow(opacityFactor, 1.8); // Smooth falloff curve
-                    this.alpha = opacityFactor * this.baseAlpha;
-                }
-
-                draw() {
-                    ctx.save();
-                    ctx.translate(this.x, this.y);
-                    ctx.rotate(this.angle);
-                    ctx.globalAlpha = this.alpha;
-                    ctx.strokeStyle = this.color;
-                    ctx.lineWidth = 1.2; // Thinner stroke
-                    ctx.lineCap = 'round';
-
+            renderQueue.forEach(item => {
+                if (item.type === 'rung') {
+                    let alpha = (item.avgZ + strandRadius) / (2 * strandRadius) * 0.5 + 0.2;
+                    ctx.strokeStyle = `rgba(129, 140, 248, ${Math.max(0.1, alpha)})`;
+                    ctx.lineWidth = 1.4;
                     ctx.beginPath();
-                    ctx.moveTo(-this.length / 2, 0);
-                    ctx.lineTo(this.length / 2, 0);
+                    ctx.moveTo(item.x1, item.y1);
+                    ctx.lineTo(item.x2, item.y2);
                     ctx.stroke();
 
+                    // Center base pair nucleotide particle
+                    let mx = item.x1;
+                    let my = (item.y1 + item.y2) / 2;
+                    ctx.fillStyle = `rgba(244, 114, 182, ${alpha * 0.85})`;
+                    ctx.beginPath();
+                    ctx.arc(mx, my, 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    let alpha = (item.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
+                    let radius = 3.6 * item.scale;
+
+                    ctx.save();
+                    ctx.shadowBlur = 10 * item.scale;
+                    ctx.shadowColor = item.color;
+                    ctx.fillStyle = item.color;
+                    ctx.globalAlpha = Math.max(0.15, alpha);
+                    ctx.beginPath();
+                    ctx.arc(item.x, item.y, Math.max(0.8, radius), 0, Math.PI * 2);
+                    ctx.fill();
                     ctx.restore();
                 }
-            }
+            });
 
-            for (let i = 0; i < particleCount; i++) {
-                particles.push(new Particle());
-            }
-
-            function animate() {
-                ctx.clearRect(0, 0, width, height);
-                time += 0.015;
-
-                for (let i = 0; i < particles.length; i++) {
-                    particles[i].update(time);
-                    particles[i].draw();
-                }
-
-                requestAnimationFrame(animate);
-            }
-
-            animate();
-        } catch(err) {
-            console.error("Antigravity canvas error:", err);
+            requestAnimationFrame(animate);
         }
+
+        animate();
     })();
     </script>
     """
-    components.html(antigravity_js, height=0, width=0)
-    
+    components.html(header_html, height=130, scrolling=False)
+
+
 def render_protein_3d_viewer(pdb_data: str, height: int = 480):
     """Renders raw PDB/CIF text content safely into 3Dmol.js using Base64 encoding."""
     import base64
@@ -729,128 +759,11 @@ def color_protein_sequence_block(seq: str) -> str:
     return styled_html
 
 
+# Apply Custom Theme CSS
 inject_custom_ui_theme()
 
-st.markdown(
-    """<style>
-.header-container {
-display: flex;
-flex-direction: row;
-justify-content: space-between;
-align-items: flex-start;
-width: 100%;
-margin-bottom: 1.5rem;
-position: relative;
-}
-@keyframes titleTextGlow {
-0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
-50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
-100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
-}
-.title-glow-text {
-background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
--webkit-background-clip: text;
--webkit-text-fill-color: transparent;
-animation: titleTextGlow 4s ease-in-out infinite;
-display: inline-block;
-}
-
-.central-dogma-anim-vertical {
-position: absolute;
-top: -10px;
-right: 15px;
-width: 100px;  
-height: 320px; 
-overflow: visible;
-z-index: 100;
-}
-
-@keyframes spinDna {
-0% { transform: scaleX(1); }
-50% { transform: scaleX(-0.85); filter: drop-shadow(0 0 10px #38bdf8); }
-100% { transform: scaleX(1); }
-}
-.dna-layer {
-transform-origin: 60px 80px;
-animation: spinDna 5s linear infinite;
-}
-
-@keyframes swayRna {
-0%, 100% { transform: translateX(0px); }
-50% { transform: translateX(3px); }
-}
-.rna-strand {
-animation: swayRna 3s ease-in-out infinite;
-}
-
-@keyframes pulseProtein {
-0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(0 0 5px rgba(192, 132, 252, 0.5)); }
-50% { transform: scale(1.08) rotate(3deg); filter: drop-shadow(0 0 15px rgba(192, 132, 252, 1)); }
-}
-.protein-cluster {
-transform-origin: 60px 345px;
-animation: pulseProtein 3.5s ease-in-out infinite;
-}
-
-@keyframes processArrow {
-0%, 100% { opacity: 0.3; }
-50% { opacity: 1; filter: drop-shadow(0 0 6px white); }
-}
-.process-arrow {
-animation: processArrow 2s infinite;
-}
-</style>
-<div class="header-container">
-<div style="flex: 1; min-width: 320px;">
-<h1 style='font-size: 2.8rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
-Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
-</h1>
-</div>
-<div style="flex-shrink: 0; text-align: right;">
-<svg class="central-dogma-anim-vertical" viewBox="0 0 120 400" fill="none" xmlns="http://www.w3.org/2000/svg">
-<defs>
-<linearGradient id="unifiedGrad" x1="0" y1="0" x2="0" y2="400" gradientUnits="userSpaceOnUse">
-<stop offset="0%" stop-color="#38bdf8"/>
-<stop offset="50%" stop-color="#818cf8"/>
-<stop offset="100%" stop-color="#c084fc"/>
-</linearGradient>
-</defs>
-<g class="dna-layer">
-<path d="M 40 30 C 40 55, 80 65, 80 90 C 80 115, 40 125, 40 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round"/>
-<path d="M 80 30 C 80 55, 40 65, 40 90 C 40 115, 80 125, 80 150" stroke="url(#unifiedGrad)" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
-<line x1="42" y1="30" x2="78" y2="30" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
-<line x1="50" y1="45" x2="70" y2="45" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
-<line x1="65" y1="75" x2="55" y2="75" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
-<line x1="78" y1="90" x2="42" y2="90" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
-<line x1="65" y1="105" x2="55" y2="105" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
-<line x1="50" y1="135" x2="70" y2="135" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
-<line x1="42" y1="150" x2="78" y2="150" stroke="url(#unifiedGrad)" stroke-width="2.5"/>
-</g>
-<g class="process-arrow">
-<line x1="60" y1="158" x2="60" y2="178" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
-<polygon points="55,174 65,174 60,182" fill="url(#unifiedGrad)"/>
-</g>
-<g class="rna-strand">
-<path d="M 50 195 C 75 220, 45 260, 70 285" stroke="url(#unifiedGrad)" stroke-width="4.5" fill="none" stroke-linecap="round"/>
-</g>
-<g class="process-arrow">
-<line x1="60" y1="298" x2="60" y2="318" stroke="url(#unifiedGrad)" stroke-width="2" stroke-dasharray="4 2"/>
-<polygon points="55,314 65,314 60,322" fill="url(#unifiedGrad)"/>
-</g>
-<g class="protein-cluster">
-<path d="M 40 345 L 60 335 L 80 345 L 70 365 L 50 365 Z" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" stroke-linejoin="round"/>
-<path d="M 60 335 L 50 365" stroke="url(#unifiedGrad)" stroke-width="3" fill="none" opacity="0.6"/>
-<circle cx="40" cy="345" r="9" fill="url(#unifiedGrad)"/>
-<circle cx="60" cy="335" r="9" fill="url(#unifiedGrad)"/>
-<circle cx="80" cy="345" r="9" fill="url(#unifiedGrad)"/>
-<circle cx="70" cy="365" r="9" fill="url(#unifiedGrad)"/>
-<circle cx="50" cy="365" r="9" fill="url(#unifiedGrad)"/>
-</g>
-</svg>
-</div>
-</div>""",
-    unsafe_allow_html=True,
-)
+# Render Header with Horizontal Interactive Particle DNA Strand
+render_header_with_horizontal_dna()
 
 st.sidebar.header("Settings")
 user_email = st.sidebar.text_input(
