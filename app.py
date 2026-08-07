@@ -403,76 +403,222 @@ def render_header_with_horizontal_dna():
     components.html(header_html, height=130, scrolling=False)
 
 
-def render_protein_3d_viewer(pdb_data: str, height: int = 480):
-    """Renders raw PDB/CIF text content safely into 3Dmol.js using Base64 encoding."""
-    import base64
-    b64_pdb = base64.b64encode(pdb_data.encode('utf-8')).decode('utf-8')
-
-    html_code = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/3Dmol/2.0.4/3Dmol-min.js"></script>
-        <style>
-            * {{ box-sizing: border-box; margin: 0; padding: 0; }}
-            body, html {{ width: 100%; height: 100%; overflow: hidden; background-color: transparent; font-family: -apple-system, sans-serif; }}
-            .viewer-wrapper {{
-                position: relative; width: 100%; height: {height}px;
-                background: rgba(10, 10, 12, 0.6); backdrop-filter: blur(12px);
-                border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 14px; overflow: hidden;
-            }}
-            #viewport {{ width: 100%; height: 100%; touch-action: none; }}
-            .controls-bar {{
-                position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
-                display: flex; gap: 6px; background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(8px);
-                padding: 6px 12px; border-radius: 30px; border: 1px solid rgba(255, 255, 255, 0.15); z-index: 10;
-            }}
-            .control-btn {{
-                background: rgba(255, 255, 255, 0.08); color: #e2e8f0; border: 1px solid rgba(255, 255, 255, 0.12);
-                border-radius: 20px; padding: 6px 12px; font-size: 11px; font-weight: 600; cursor: pointer;
-            }}
-            .control-btn:active, .control-btn.active {{ background: rgba(56, 189, 248, 0.25); border-color: #38bdf8; color: #38bdf8; }}
-        </style>
-    </head>
-    <body>
-        <div class="viewer-wrapper">
-            <div id="viewport"></div>
-            <div class="controls-bar">
-                <button class="control-btn active" onclick="setStyle('cartoon')">Cartoon</button>
-                <button class="control-btn" onclick="setStyle('stick')">Sticks</button>
-                <button class="control-btn" onclick="setStyle('sphere')">Sphere</button>
-                <button class="control-btn" onclick="resetView()">Reset</button>
-            </div>
+def render_header_with_horizontal_dna():
+    """Renders page header alongside a wide interactive 3D particle horizontal rotating DNA strand that distorts freely on hover."""
+    header_html = """
+    <style>
+    .header-wrapper {
+        display: flex;
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        margin-bottom: 0.5rem;
+        gap: 20px;
+        overflow: visible;
+    }
+    @keyframes titleTextGlow {
+        0% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+        50% { filter: drop-shadow(0px 0px 24px rgba(56, 189, 248, 0.85)); }
+        100% { filter: drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.35)); }
+    }
+    .title-glow-text {
+        background: linear-gradient(90deg, #38bdf8 0%, #60a5fa 50%, #3b82f6 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: titleTextGlow 4s ease-in-out infinite;
+        display: inline-block;
+    }
+    .dna-container {
+        flex: 1;
+        max-width: 620px;
+        height: 170px;
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        overflow: visible;
+    }
+    #horizontalDnaCanvas {
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+        overflow: visible;
+    }
+    </style>
+    <div class="header-wrapper">
+        <div style="flex-shrink: 0;">
+            <h1 style='font-size: 2.6rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
+                Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
+            </h1>
         </div>
-        <script>
-            let viewer = null;
-            document.addEventListener("DOMContentLoaded", function() {{
-                try {{
-                    viewer = $3Dmol.createViewer(document.getElementById('viewport'), {{backgroundColor: '0x000000', backgroundAlpha: 0.0}});
-                    let pdbData = atob("{b64_pdb}");
-                    viewer.addModel(pdbData, "pdb");
-                    viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
-                    viewer.zoomTo(); 
-                    viewer.render();
-                }} catch (error) {{
-                    console.error("Error rendering 3Dmol:", error);
-                }}
-            }});
-            function setStyle(type) {{
-                if (!viewer) return;
-                viewer.setStyle({{}}, {{}});
-                if (type === 'cartoon') viewer.setStyle({{}}, {{cartoon: {{color: 'spectrum'}}}});
-                else if (type === 'stick') viewer.setStyle({{}}, {{stick: {{colorscheme: 'amino'}}}});
-                else if (type === 'sphere') viewer.setStyle({{}}, {{sphere: {{scale: 0.28, colorscheme: 'spectrum'}}}});
-                viewer.render();
-            }}
-            function resetView() {{ if (viewer) {{ viewer.zoomTo(); viewer.render(); }} }}
-        </script>
-    </body>
-    </html>
+        <div class="dna-container">
+            <canvas id="horizontalDnaCanvas"></canvas>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        const canvas = document.getElementById('horizontalDnaCanvas');
+        if (!canvas) return;
+        const ctx = canvas.getContext('2d');
+
+        function setCanvasDimensions() {
+            canvas.width = canvas.parentElement.clientWidth || 580;
+            canvas.height = 170;
+        }
+        setCanvasDimensions();
+        window.addEventListener('resize', setCanvasDimensions);
+
+        let rotationAngle = 0;
+        const mouse = { x: -1000, y: -1000, active: false };
+
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+            mouse.active = true;
+        });
+
+        canvas.addEventListener('mouseleave', () => {
+            mouse.x = -1000;
+            mouse.y = -1000;
+            mouse.active = false;
+        });
+
+        const numSteps = 38;
+        const strandRadius = 46; // Increased width for a bolder helix
+        const rungDotsCount = 6;
+
+        class DNAParticle {
+            constructor(type, indexRatio, rungFraction, color) {
+                this.type = type; // 'strand1', 'strand2', or 'rung'
+                this.indexRatio = indexRatio;
+                this.rungFraction = rungFraction;
+                this.color = color;
+                
+                this.x = 0;
+                this.y = 0;
+                this.vx = 0;
+                this.vy = 0;
+                this.z = 0;
+                this.scale = 1;
+            }
+
+            calculateTarget(angle, width, height) {
+                const length = Math.min(width - 20, 540);
+                const startX = (width - length) / 2;
+                const cy = height / 2;
+
+                const currentX = startX + this.indexRatio * length;
+                const nodeAngle = angle + this.indexRatio * Math.PI * 6.5;
+
+                if (this.type === 'strand1') {
+                    const ty = cy + Math.sin(nodeAngle) * strandRadius;
+                    const tz = Math.cos(nodeAngle) * strandRadius;
+                    return { tx: currentX, ty: ty, tz: tz };
+                } else if (this.type === 'strand2') {
+                    const ty = cy + Math.sin(nodeAngle + Math.PI) * strandRadius;
+                    const tz = Math.cos(nodeAngle + Math.PI) * strandRadius;
+                    return { tx: currentX, ty: ty, tz: tz };
+                } else {
+                    const y1 = cy + Math.sin(nodeAngle) * strandRadius;
+                    const z1 = Math.cos(nodeAngle) * strandRadius;
+
+                    const y2 = cy + Math.sin(nodeAngle + Math.PI) * strandRadius;
+                    const z2 = Math.cos(nodeAngle + Math.PI) * strandRadius;
+
+                    const ty = y1 + (y2 - y1) * this.rungFraction;
+                    const tz = z1 + (z2 - z1) * this.rungFraction;
+                    return { tx: currentX, ty: ty, tz: tz };
+                }
+            }
+
+            update(angle, width, height) {
+                const target = this.calculateTarget(angle, width, height);
+                this.z = target.tz;
+                this.scale = 1 + this.z / 160;
+
+                // Expanded repulsion zone so particles fly freely on hover
+                const dx = this.x - mouse.x;
+                const dy = this.y - mouse.y;
+                const dist = Math.hypot(dx, dy);
+                const distortRadius = 110;
+
+                if (mouse.active && dist < distortRadius && dist > 0) {
+                    const force = (1 - dist / distortRadius) * 22;
+                    const anglePush = Math.atan2(dy, dx);
+                    this.vx += Math.cos(anglePush) * force;
+                    this.vy += Math.sin(anglePush) * force;
+                }
+
+                // Elastic spring return force
+                const spring = 0.075;
+                const friction = 0.84;
+
+                this.vx += (target.tx - this.x) * spring;
+                this.vy += (target.ty - this.y) * spring;
+
+                this.vx *= friction;
+                this.vy *= friction;
+
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+
+            draw(ctx) {
+                const alpha = (this.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
+                const baseRadius = this.type === 'rung' ? 2.4 : 3.8;
+                const radius = Math.max(0.6, baseRadius * this.scale);
+
+                ctx.save();
+                ctx.shadowBlur = (this.type === 'rung' ? 6 : 12) * this.scale;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.max(0.15, alpha);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        const particles = [];
+
+        // Construct Mesh
+        for (let i = 0; i <= numSteps; i++) {
+            const ratio = i / numSteps;
+
+            particles.push(new DNAParticle('strand1', ratio, 0, '#38bdf8'));
+            particles.push(new DNAParticle('strand2', ratio, 0, '#c084fc'));
+
+            for (let j = 1; j <= rungDotsCount; j++) {
+                const rungFraction = j / (rungDotsCount + 1);
+                particles.push(new DNAParticle('rung', ratio, rungFraction, '#f472b6'));
+            }
+        }
+
+        particles.forEach(p => {
+            const initTarget = p.calculateTarget(0, canvas.width, canvas.height);
+            p.x = initTarget.tx;
+            p.y = initTarget.ty;
+        });
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            rotationAngle += 0.022;
+
+            particles.forEach(p => p.update(rotationAngle, canvas.width, canvas.height));
+            particles.sort((a, b) => a.z - b.z);
+            particles.forEach(p => p.draw(ctx));
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    })();
+    </script>
     """
-    components.html(html_code, height=height + 10, scrolling=False)
+    components.html(header_html, height=180, scrolling=False)
 
 
 def fetch_sequence(input_query: str, uploaded_file) -> str:
