@@ -333,6 +333,7 @@ def inject_custom_ui_theme():
     </script>
     """
     components.html(antigravity_js, height=0, width=0)
+    
 def render_protein_3d_viewer(pdb_data: str, height: int = 480):
     """Renders raw PDB/CIF text content safely into 3Dmol.js using Base64 encoding."""
     import base64
