@@ -45,7 +45,7 @@ AA_NAMES = {
 
 
 def inject_custom_ui_theme():
-    """Injects dynamic breathing background, glassmorphism UI, equal-sized side-by-side radio cards, and cursor interactive animation."""
+    """Injects dynamic breathing background, glassmorphism UI, equal-sized side-by-side radio cards, and Antigravity interactive particle field."""
     css = """
     <style>
     @keyframes breathingGradient {
@@ -175,94 +175,147 @@ def inject_custom_ui_theme():
     """
     st.markdown(css, unsafe_allow_html=True)
 
-    # Executing JavaScript via Streamlit components to ensure script execution
-    cursor_js = """
+    # Injecting Antigravity Interactive Vector Canvas Script
+    antigravity_js = """
     <script>
     (function() {
         try {
             const parentDoc = window.parent.document;
-            let canvas = parentDoc.getElementById('cursor-particle-canvas');
+            let canvas = parentDoc.getElementById('antigravity-canvas');
             
             if (!canvas) {
                 canvas = parentDoc.createElement('canvas');
-                canvas.id = 'cursor-particle-canvas';
+                canvas.id = 'antigravity-canvas';
                 canvas.style.position = 'fixed';
                 canvas.style.top = '0';
                 canvas.style.left = '0';
                 canvas.style.width = '100vw';
                 canvas.style.height = '100vh';
                 canvas.style.pointerEvents = 'none';
-                canvas.style.zIndex = '999999';
+                canvas.style.zIndex = '0';
                 parentDoc.body.appendChild(canvas);
             }
 
             const ctx = canvas.getContext('2d');
-            let width = canvas.width = parentDoc.documentElement.clientWidth || window.innerWidth;
-            let height = canvas.height = parentDoc.documentElement.clientHeight || window.innerHeight;
+            let width, height;
 
-            function updateBounds() {
+            function resize() {
                 width = canvas.width = parentDoc.documentElement.clientWidth || window.innerWidth;
                 height = canvas.height = parentDoc.documentElement.clientHeight || window.innerHeight;
             }
+            resize();
+            parentDoc.defaultView.addEventListener('resize', resize);
 
-            parentDoc.defaultView.addEventListener('resize', updateBounds);
+            const mouse = { x: -1000, y: -1000, targetX: -1000, targetY: -1000, radius: 220 };
 
-            const particles = [];
-            const colors = ['#38bdf8', '#818cf8', '#c084fc', '#3b82f6', '#0284c7'];
-
-            parentDoc.addEventListener('mousemove', function(e) {
-                for (let i = 0; i < 2; i++) {
-                    particles.push({
-                        x: e.clientX,
-                        y: e.clientY,
-                        vx: (Math.random() - 0.5) * 1.5,
-                        vy: (Math.random() - 0.5) * 1.5,
-                        radius: Math.random() * 2.5 + 1,
-                        color: colors[Math.floor(Math.random() * colors.length)],
-                        alpha: 0.85,
-                        decay: Math.random() * 0.02 + 0.015
-                    });
-                }
+            parentDoc.addEventListener('mousemove', (e) => {
+                mouse.targetX = e.clientX;
+                mouse.targetY = e.clientY;
             });
 
-            function renderParticles() {
+            parentDoc.addEventListener('mouseleave', () => {
+                mouse.targetX = -1000;
+                mouse.targetY = -1000;
+            });
+
+            const particles = [];
+            const particleCount = 280;
+            const colors = [
+                '#38bdf8', '#60a5fa', '#818cf8', '#a78bfa', 
+                '#f472b6', '#fb923c', '#facc15', '#34d399'
+            ];
+
+            class Particle {
+                constructor() {
+                    this.init();
+                }
+
+                init() {
+                    this.originX = Math.random() * width;
+                    this.originY = Math.random() * height;
+                    this.x = this.originX;
+                    this.y = this.originY;
+                    this.vx = (Math.random() - 0.5) * 0.3;
+                    this.vy = (Math.random() - 0.5) * 0.3;
+                    this.length = Math.random() * 8 + 4;
+                    this.angle = Math.random() * Math.PI * 2;
+                    this.color = colors[Math.floor(Math.random() * colors.length)];
+                    this.alpha = Math.random() * 0.6 + 0.25;
+                    this.friction = 0.92;
+                    this.spring = 0.015;
+                }
+
+                update() {
+                    // Smooth mouse tracking
+                    mouse.x += (mouse.targetX - mouse.x) * 0.1;
+                    mouse.y += (mouse.targetY - mouse.y) * 0.1;
+
+                    // Repulsion / Antigravity physics
+                    const dx = this.x - mouse.x;
+                    const dy = this.y - mouse.y;
+                    const dist = Math.hypot(dx, dy);
+
+                    if (dist < mouse.radius && dist > 0) {
+                        const force = (1 - dist / mouse.radius) * 12;
+                        const angle = Math.atan2(dy, dx);
+                        this.vx += Math.cos(angle) * force;
+                        this.vy += Math.sin(angle) * force;
+                        this.angle = angle; // Align vector along force
+                    } else {
+                        // Return to ambient motion
+                        this.vx += (this.originX - this.x) * this.spring;
+                        this.vy += (this.originY - this.y) * this.spring;
+                        this.angle += 0.01;
+                    }
+
+                    this.vx *= this.friction;
+                    this.vy *= this.friction;
+
+                    this.x += this.vx;
+                    this.y += this.vy;
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.angle);
+                    ctx.globalAlpha = this.alpha;
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+
+                    ctx.beginPath();
+                    ctx.moveTo(-this.length / 2, 0);
+                    ctx.lineTo(this.length / 2, 0);
+                    ctx.stroke();
+
+                    ctx.restore();
+                }
+            }
+
+            for (let i = 0; i < particleCount; i++) {
+                particles.push(new Particle());
+            }
+
+            function animate() {
                 ctx.clearRect(0, 0, width, height);
 
                 for (let i = 0; i < particles.length; i++) {
-                    let p = particles[i];
-                    p.x += p.vx;
-                    p.y += p.vy;
-                    p.alpha -= p.decay;
-
-                    if (p.alpha <= 0) {
-                        particles.splice(i, 1);
-                        i--;
-                        continue;
-                    }
-
-                    ctx.save();
-                    ctx.globalAlpha = p.alpha;
-                    ctx.beginPath();
-                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                    ctx.fillStyle = p.color;
-                    ctx.shadowBlur = 8;
-                    ctx.shadowColor = p.color;
-                    ctx.fill();
-                    ctx.restore();
+                    particles[i].update();
+                    particles[i].draw();
                 }
 
-                requestAnimationFrame(renderParticles);
+                requestAnimationFrame(animate);
             }
 
-            renderParticles();
+            animate();
         } catch(err) {
-            console.error("Cursor particle error:", err);
+            console.error("Antigravity canvas error:", err);
         }
     })();
     </script>
     """
-    components.html(cursor_js, height=0, width=0)
-
+    components.html(antigravity_js, height=0, width=0)
 def render_protein_3d_viewer(pdb_data: str, height: int = 480):
     """Renders raw PDB/CIF text content safely into 3Dmol.js using Base64 encoding."""
     import base64
