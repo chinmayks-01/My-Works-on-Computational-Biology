@@ -184,7 +184,8 @@ def inject_custom_ui_theme():
 
 
 def render_header_with_horizontal_dna():
-    """Renders page header alongside an unconstrained glowing 3D particle horizontally-stretched rotating DNA strand in gradient blue."""
+    """Renders page header alongside an unconstrained 3D particle horizontally-stretched rotating DNA strand in gradient blue with soft blurry ends."""
+    # Main page title container with DOM mounting target for canvas
     st.markdown(
         """
         <style>
@@ -228,6 +229,7 @@ def render_header_with_horizontal_dna():
         unsafe_allow_html=True,
     )
 
+    # Injected script with gradient blue color scheme and progressive end-blurring
     dna_js = """
     <script>
     (function() {
@@ -263,7 +265,6 @@ def render_header_with_horizontal_dna():
             parentDoc.defaultView.addEventListener('resize', setCanvasDimensions);
 
             let rotationAngle = 0;
-            let glowTimer = 0;
             const mouse = { x: -1000, y: -1000, active: false };
 
             canvas.addEventListener('mousemove', (e) => {
@@ -283,20 +284,23 @@ def render_header_with_horizontal_dna():
             const strandRadius = 24;
             const rungDotsCount = 5;
 
+            // Helper to interpolate gradient blue colors across the strand
             function getGradientBlueColor(ratio, type, rungFraction) {
+                // Electric Sky Blue -> Royal Blue -> Cobalt Gradient
                 if (type === 'strand1') {
-                    return ratio < 0.5 ? '#38bdf8' : '#60a5fa';
+                    return ratio < 0.5 ? '#38bdf8' : '#60a5fa'; // Bright Cyan-Blue to Sky Blue
                 } else if (type === 'strand2') {
-                    return ratio < 0.5 ? '#60a5fa' : '#3b82f6';
+                    return ratio < 0.5 ? '#2563eb' : '#1d4ed8'; // Royal Blue to Sapphire
                 } else {
-                    return rungFraction < 0.5 ? '#38bdf8' : '#60a5fa';
+                    // Nucleotide rungs: soft intermediate blue gradient
+                    return rungFraction < 0.5 ? '#0284c7' : '#3b82f6';
                 }
             }
 
             class DNAParticle {
                 constructor(type, indexRatio, rungFraction) {
                     this.type = type;
-                    this.indexRatio = indexRatio;
+                    this.indexRatio = indexRatio; // 0.0 (left) to 1.0 (right)
                     this.rungFraction = rungFraction;
                     this.color = getGradientBlueColor(indexRatio, type, rungFraction);
                     
@@ -342,6 +346,7 @@ def render_header_with_horizontal_dna():
                     this.z = target.tz;
                     this.scale = 1 + this.z / 150;
 
+                    // Mouse scatter physics
                     const dx = this.x - mouse.x;
                     const dy = this.y - mouse.y;
                     const dist = Math.hypot(dx, dy);
@@ -354,6 +359,7 @@ def render_header_with_horizontal_dna():
                         this.vy += Math.sin(anglePush) * force;
                     }
 
+                    // Elastic spring return force
                     const spring = 0.08;
                     const friction = 0.83;
 
@@ -367,45 +373,37 @@ def render_header_with_horizontal_dna():
                     this.y += this.vy;
                 }
 
-                draw(ctx, pulse) {
+                draw(ctx) {
+                    // Edge Factor: 1 at center, smoothly tapering down towards 0 at both ends
                     const edgeFactor = Math.sin(this.indexRatio * Math.PI);
-                    const depthAlpha = (this.z + strandRadius) / (2 * strandRadius) * 0.6 + 0.4;
-                    const edgeAlphaMultiplier = 0.45 + 0.55 * edgeFactor;
+
+                    // Alpha gradually softens towards both ends (from 100% to ~38%)
+                    const depthAlpha = (this.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
+                    const edgeAlphaMultiplier = 0.38 + 0.62 * edgeFactor;
                     const alpha = depthAlpha * edgeAlphaMultiplier;
 
-                    const endBlurAddition = (1 - edgeFactor) * 8;
-                    const baseBlur = (this.type === 'rung' ? 12 : 22) + pulse * 6;
+                    // Blur increases gradually towards both ends for a soft out-of-focus glow
+                    const endBlurAddition = (1 - edgeFactor) * 8.5;
+                    const baseBlur = this.type === 'rung' ? 5 : 10;
 
-                    const baseRadius = this.type === 'rung' ? 2.4 : 3.8;
-                    const radius = Math.max(0.8, baseRadius * this.scale);
+                    const baseRadius = this.type === 'rung' ? 2.2 : 3.6;
+                    const radius = Math.max(0.6, baseRadius * this.scale);
 
                     ctx.save();
-                    ctx.globalCompositeOperation = 'lighter';
-
                     ctx.shadowBlur = (baseBlur + endBlurAddition) * this.scale;
-                    ctx.shadowColor = '#00d2ff';
+                    ctx.shadowColor = this.color;
                     ctx.fillStyle = this.color;
-                    ctx.globalAlpha = Math.max(0.2, alpha * 0.85);
-
+                    ctx.globalAlpha = Math.max(0.12, alpha);
                     ctx.beginPath();
-                    ctx.arc(this.x, this.y, radius * 1.3, 0, Math.PI * 2);
+                    ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
                     ctx.fill();
-
-                    ctx.shadowBlur = 6 * this.scale;
-                    ctx.shadowColor = '#ffffff';
-                    ctx.fillStyle = '#ffffff';
-                    ctx.globalAlpha = Math.min(1.0, alpha + 0.2);
-
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, Math.max(0.5, radius * 0.6), 0, Math.PI * 2);
-                    ctx.fill();
-
                     ctx.restore();
                 }
             }
 
             const particles = [];
 
+            // Construct Mesh
             for (let i = 0; i <= numSteps; i++) {
                 const ratio = i / numSteps;
 
@@ -427,12 +425,10 @@ def render_header_with_horizontal_dna():
             function animate() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 rotationAngle += 0.02;
-                glowTimer += 0.04;
-                const pulse = (Math.sin(glowTimer) + 1) / 2;
 
                 particles.forEach(p => p.update(rotationAngle, canvas.width, canvas.height));
                 particles.sort((a, b) => a.z - b.z);
-                particles.forEach(p => p.draw(ctx, pulse));
+                particles.forEach(p => p.draw(ctx));
 
                 requestAnimationFrame(animate);
             }
