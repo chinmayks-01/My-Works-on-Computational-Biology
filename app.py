@@ -177,7 +177,7 @@ def inject_custom_ui_theme():
 
 
 def render_header_with_horizontal_dna():
-    """Renders page header alongside an unconstrained 3D particle horizontally-stretched rotating DNA strand."""
+    """Renders page header alongside an unconstrained 3D particle horizontally-stretched rotating DNA strand in gradient blue with soft blurry ends."""
     # Main page title container with DOM mounting target for canvas
     st.markdown(
         """
@@ -222,7 +222,7 @@ def render_header_with_horizontal_dna():
         unsafe_allow_html=True,
     )
 
-    # Injected script mounts canvas into parent document body/header to remove all iframe bounding box limits
+    # Injected script with gradient blue color scheme and progressive end-blurring
     dna_js = """
     <script>
     (function() {
@@ -235,7 +235,6 @@ def render_header_with_horizontal_dna():
             if (!canvas) {
                 canvas = parentDoc.createElement('canvas');
                 canvas.id = 'unboundedDnaCanvas';
-                // Oversized canvas positioning to allow particles to scatter completely free of box clipping
                 canvas.style.position = 'absolute';
                 canvas.style.top = '-80px';
                 canvas.style.left = '-80px';
@@ -250,8 +249,8 @@ def render_header_with_horizontal_dna():
             function setCanvasDimensions() {
                 const rect = targetContainer.getBoundingClientRect();
                 const containerWidth = rect.width > 50 ? rect.width : 580;
-                canvas.width = containerWidth + 160; // 80px overflow padding on left and right
-                canvas.height = 280; // 80px overflow padding on top and bottom
+                canvas.width = containerWidth + 160;
+                canvas.height = 280;
                 canvas.style.width = canvas.width + 'px';
                 canvas.style.height = canvas.height + 'px';
             }
@@ -275,15 +274,28 @@ def render_header_with_horizontal_dna():
             });
 
             const numSteps = 42;
-            const strandRadius = 24; // Slimmer vertical height
+            const strandRadius = 24;
             const rungDotsCount = 5;
 
+            // Helper to interpolate gradient blue colors across the strand
+            function getGradientBlueColor(ratio, type, rungFraction) {
+                // Electric Sky Blue -> Royal Blue -> Cobalt Gradient
+                if (type === 'strand1') {
+                    return ratio < 0.5 ? '#38bdf8' : '#60a5fa'; // Bright Cyan-Blue to Sky Blue
+                } else if (type === 'strand2') {
+                    return ratio < 0.5 ? '#2563eb' : '#1d4ed8'; // Royal Blue to Sapphire
+                } else {
+                    // Nucleotide rungs: soft intermediate blue gradient
+                    return rungFraction < 0.5 ? '#0284c7' : '#3b82f6';
+                }
+            }
+
             class DNAParticle {
-                constructor(type, indexRatio, rungFraction, color) {
-                    this.type = type; // 'strand1', 'strand2', or 'rung'
-                    this.indexRatio = indexRatio;
+                constructor(type, indexRatio, rungFraction) {
+                    this.type = type;
+                    this.indexRatio = indexRatio; // 0.0 (left) to 1.0 (right)
                     this.rungFraction = rungFraction;
-                    this.color = color;
+                    this.color = getGradientBlueColor(indexRatio, type, rungFraction);
                     
                     this.x = 0;
                     this.y = 0;
@@ -294,13 +306,11 @@ def render_header_with_horizontal_dna():
                 }
 
                 calculateTarget(angle, width, height) {
-                    // Wide horizontal stretch across the container
                     const length = width - 180;
-                    const startX = 90; // Centered inside padded canvas
+                    const startX = 90;
                     const cy = height / 2;
 
                     const currentX = startX + this.indexRatio * length;
-                    // Lower frequency multiplier (Math.PI * 3.6) = wider horizontal wave loops
                     const nodeAngle = angle + this.indexRatio * Math.PI * 3.6;
 
                     if (this.type === 'strand1') {
@@ -357,15 +367,26 @@ def render_header_with_horizontal_dna():
                 }
 
                 draw(ctx) {
-                    const alpha = (this.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
+                    // Edge Factor: 1 at center, smoothly tapering down towards 0 at both ends
+                    const edgeFactor = Math.sin(this.indexRatio * Math.PI);
+
+                    // Alpha gradually softens towards both ends (from 100% to ~38%)
+                    const depthAlpha = (this.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
+                    const edgeAlphaMultiplier = 0.38 + 0.62 * edgeFactor;
+                    const alpha = depthAlpha * edgeAlphaMultiplier;
+
+                    // Blur increases gradually towards both ends for a soft out-of-focus glow
+                    const endBlurAddition = (1 - edgeFactor) * 8.5;
+                    const baseBlur = this.type === 'rung' ? 5 : 10;
+
                     const baseRadius = this.type === 'rung' ? 2.2 : 3.6;
                     const radius = Math.max(0.6, baseRadius * this.scale);
 
                     ctx.save();
-                    ctx.shadowBlur = (this.type === 'rung' ? 5 : 10) * this.scale;
+                    ctx.shadowBlur = (baseBlur + endBlurAddition) * this.scale;
                     ctx.shadowColor = this.color;
                     ctx.fillStyle = this.color;
-                    ctx.globalAlpha = Math.max(0.15, alpha);
+                    ctx.globalAlpha = Math.max(0.12, alpha);
                     ctx.beginPath();
                     ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
                     ctx.fill();
@@ -379,12 +400,12 @@ def render_header_with_horizontal_dna():
             for (let i = 0; i <= numSteps; i++) {
                 const ratio = i / numSteps;
 
-                particles.push(new DNAParticle('strand1', ratio, 0, '#38bdf8'));
-                particles.push(new DNAParticle('strand2', ratio, 0, '#c084fc'));
+                particles.push(new DNAParticle('strand1', ratio, 0));
+                particles.push(new DNAParticle('strand2', ratio, 0));
 
                 for (let j = 1; j <= rungDotsCount; j++) {
                     const rungFraction = j / (rungDotsCount + 1);
-                    particles.push(new DNAParticle('rung', ratio, rungFraction, '#f472b6'));
+                    particles.push(new DNAParticle('rung', ratio, rungFraction));
                 }
             }
 
@@ -413,7 +434,6 @@ def render_header_with_horizontal_dna():
     </script>
     """
     components.html(dna_js, height=0, width=0)
-
 
 def render_protein_3d_viewer(pdb_data: str, height: int = 480):
     """Renders raw PDB/CIF text content safely into 3Dmol.js using Base64 encoding."""
