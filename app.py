@@ -184,8 +184,7 @@ def inject_custom_ui_theme():
 
 
 def render_header_with_horizontal_dna():
-    """Renders page header alongside an unconstrained 3D particle horizontally-stretched rotating DNA strand in gradient blue with soft blurry ends."""
-    # Main page title container with DOM mounting target for canvas
+    """Renders page header alongside an interactive wizard emoji that follows mouse tracking and glowing 3D particle horizontal DNA strand."""
     st.markdown(
         """
         <style>
@@ -210,6 +209,15 @@ def render_header_with_horizontal_dna():
             animation: titleTextGlow 4s ease-in-out infinite;
             display: inline-block;
         }
+        #interactive-wizard {
+            display: inline-block;
+            cursor: pointer;
+            transition: transform 0.08s ease-out;
+            transform-style: preserve-3d;
+            transform-origin: center center;
+            user-select: none;
+            will-change: transform;
+        }
         #dna-canvas-target {
             flex: 1;
             max-width: 650px;
@@ -220,7 +228,7 @@ def render_header_with_horizontal_dna():
         <div class="header-wrapper">
             <div style="flex-shrink: 0;">
                 <h1 style='font-size: 2.6rem; font-weight: 800; margin: 0; color: #f8fafc; white-space: nowrap;'>
-                    Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> 🧙‍♂️
+                    Welcome to <span class='title-glow-text'>ProtCraft Wizard</span> <span id="interactive-wizard">🧙‍♂️</span>
                 </h1>
             </div>
             <div id="dna-canvas-target"></div>
@@ -229,12 +237,41 @@ def render_header_with_horizontal_dna():
         unsafe_allow_html=True,
     )
 
-    # Injected script with gradient blue color scheme and progressive end-blurring
-    dna_js = """
+    dna_and_wizard_js = """
     <script>
     (function() {
         try {
             const parentDoc = window.parent.document;
+
+            // --- INTERACTIVE MOUSE-TRACKING WIZARD EMOJI ---
+            const wizard = parentDoc.getElementById('interactive-wizard');
+            if (wizard) {
+                parentDoc.addEventListener('mousemove', (e) => {
+                    const rect = wizard.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+
+                    const dx = e.clientX - centerX;
+                    const dy = e.clientY - centerY;
+
+                    // Compute 3D rotation angles looking toward cursor
+                    const maxAngle = 28;
+                    const tiltY = Math.max(-maxAngle, Math.min(maxAngle, dx * 0.06)); // Horizontal turn
+                    const tiltX = Math.max(-maxAngle, Math.min(maxAngle, -dy * 0.06)); // Vertical tilt
+
+                    // Slight directional translation leaning toward cursor
+                    const shiftX = Math.max(-8, Math.min(8, dx * 0.02));
+                    const shiftY = Math.max(-8, Math.min(8, dy * 0.02));
+
+                    wizard.style.transform = `perspective(350px) translate3d(${shiftX}px, ${shiftY}px, 12px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(1.18)`;
+                });
+
+                parentDoc.addEventListener('mouseleave', () => {
+                    wizard.style.transform = `perspective(350px) translate3d(0px, 0px, 0px) rotateX(0deg) rotateY(0deg) scale(1)`;
+                });
+            }
+
+            // --- GLOWING DNA STRAND CANVAS ---
             const targetContainer = parentDoc.getElementById('dna-canvas-target');
             if (!targetContainer) return;
 
@@ -265,6 +302,7 @@ def render_header_with_horizontal_dna():
             parentDoc.defaultView.addEventListener('resize', setCanvasDimensions);
 
             let rotationAngle = 0;
+            let glowTimer = 0;
             const mouse = { x: -1000, y: -1000, active: false };
 
             canvas.addEventListener('mousemove', (e) => {
@@ -284,23 +322,20 @@ def render_header_with_horizontal_dna():
             const strandRadius = 24;
             const rungDotsCount = 5;
 
-            // Helper to interpolate gradient blue colors across the strand
             function getGradientBlueColor(ratio, type, rungFraction) {
-                // Electric Sky Blue -> Royal Blue -> Cobalt Gradient
                 if (type === 'strand1') {
-                    return ratio < 0.5 ? '#38bdf8' : '#60a5fa'; // Bright Cyan-Blue to Sky Blue
+                    return ratio < 0.5 ? '#38bdf8' : '#60a5fa';
                 } else if (type === 'strand2') {
-                    return ratio < 0.5 ? '#2563eb' : '#1d4ed8'; // Royal Blue to Sapphire
+                    return ratio < 0.5 ? '#60a5fa' : '#3b82f6';
                 } else {
-                    // Nucleotide rungs: soft intermediate blue gradient
-                    return rungFraction < 0.5 ? '#0284c7' : '#3b82f6';
+                    return rungFraction < 0.5 ? '#38bdf8' : '#60a5fa';
                 }
             }
 
             class DNAParticle {
                 constructor(type, indexRatio, rungFraction) {
                     this.type = type;
-                    this.indexRatio = indexRatio; // 0.0 (left) to 1.0 (right)
+                    this.indexRatio = indexRatio;
                     this.rungFraction = rungFraction;
                     this.color = getGradientBlueColor(indexRatio, type, rungFraction);
                     
@@ -346,7 +381,6 @@ def render_header_with_horizontal_dna():
                     this.z = target.tz;
                     this.scale = 1 + this.z / 150;
 
-                    // Mouse scatter physics
                     const dx = this.x - mouse.x;
                     const dy = this.y - mouse.y;
                     const dist = Math.hypot(dx, dy);
@@ -359,7 +393,6 @@ def render_header_with_horizontal_dna():
                         this.vy += Math.sin(anglePush) * force;
                     }
 
-                    // Elastic spring return force
                     const spring = 0.08;
                     const friction = 0.83;
 
@@ -373,37 +406,45 @@ def render_header_with_horizontal_dna():
                     this.y += this.vy;
                 }
 
-                draw(ctx) {
-                    // Edge Factor: 1 at center, smoothly tapering down towards 0 at both ends
+                draw(ctx, pulse) {
                     const edgeFactor = Math.sin(this.indexRatio * Math.PI);
-
-                    // Alpha gradually softens towards both ends (from 100% to ~38%)
-                    const depthAlpha = (this.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
-                    const edgeAlphaMultiplier = 0.38 + 0.62 * edgeFactor;
+                    const depthAlpha = (this.z + strandRadius) / (2 * strandRadius) * 0.6 + 0.4;
+                    const edgeAlphaMultiplier = 0.45 + 0.55 * edgeFactor;
                     const alpha = depthAlpha * edgeAlphaMultiplier;
 
-                    // Blur increases gradually towards both ends for a soft out-of-focus glow
-                    const endBlurAddition = (1 - edgeFactor) * 8.5;
-                    const baseBlur = this.type === 'rung' ? 5 : 10;
+                    const endBlurAddition = (1 - edgeFactor) * 8;
+                    const baseBlur = (this.type === 'rung' ? 12 : 22) + pulse * 6;
 
-                    const baseRadius = this.type === 'rung' ? 2.2 : 3.6;
-                    const radius = Math.max(0.6, baseRadius * this.scale);
+                    const baseRadius = this.type === 'rung' ? 2.4 : 3.8;
+                    const radius = Math.max(0.8, baseRadius * this.scale);
 
                     ctx.save();
+                    ctx.globalCompositeOperation = 'lighter';
+
                     ctx.shadowBlur = (baseBlur + endBlurAddition) * this.scale;
-                    ctx.shadowColor = this.color;
+                    ctx.shadowColor = '#00d2ff';
                     ctx.fillStyle = this.color;
-                    ctx.globalAlpha = Math.max(0.12, alpha);
+                    ctx.globalAlpha = Math.max(0.2, alpha * 0.85);
+
                     ctx.beginPath();
-                    ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+                    ctx.arc(this.x, this.y, radius * 1.3, 0, Math.PI * 2);
                     ctx.fill();
+
+                    ctx.shadowBlur = 6 * this.scale;
+                    ctx.shadowColor = '#ffffff';
+                    ctx.fillStyle = '#ffffff';
+                    ctx.globalAlpha = Math.min(1.0, alpha + 0.2);
+
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, Math.max(0.5, radius * 0.6), 0, Math.PI * 2);
+                    ctx.fill();
+
                     ctx.restore();
                 }
             }
 
             const particles = [];
 
-            // Construct Mesh
             for (let i = 0; i <= numSteps; i++) {
                 const ratio = i / numSteps;
 
@@ -425,22 +466,24 @@ def render_header_with_horizontal_dna():
             function animate() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 rotationAngle += 0.02;
+                glowTimer += 0.04;
+                const pulse = (Math.sin(glowTimer) + 1) / 2;
 
                 particles.forEach(p => p.update(rotationAngle, canvas.width, canvas.height));
                 particles.sort((a, b) => a.z - b.z);
-                particles.forEach(p => p.draw(ctx));
+                particles.forEach(p => p.draw(ctx, pulse));
 
                 requestAnimationFrame(animate);
             }
 
             animate();
         } catch(err) {
-            console.error("DNA Canvas Error:", err);
+            console.error("Header Script Error:", err);
         }
     })();
     </script>
     """
-    components.html(dna_js, height=0, width=0)
+    components.html(dna_and_wizard_js, height=0, width=0)
 
 
 def render_protein_3d_viewer(pdb_data: str, height: int = 480):
@@ -841,7 +884,7 @@ def color_protein_sequence_block(seq: str) -> str:
 # Apply Custom Theme CSS
 inject_custom_ui_theme()
 
-# Render Header with Horizontal Interactive Particle DNA Strand
+# Render Header with Horizontal Interactive Particle DNA Strand & Interactive Wizard Emoji
 render_header_with_horizontal_dna()
 
 st.sidebar.header("Settings")
