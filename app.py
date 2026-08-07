@@ -177,7 +177,7 @@ def inject_custom_ui_theme():
 
 
 def render_header_with_horizontal_dna():
-    """Renders page header alongside an interactive 3D particle horizontal rotating DNA strand."""
+    """Renders page header alongside an interactive 3D particle horizontal rotating DNA strand that distorts on hover."""
     header_html = """
     <style>
     .header-wrapper {
@@ -239,120 +239,159 @@ def render_header_with_horizontal_dna():
         setCanvasDimensions();
         window.addEventListener('resize', setCanvasDimensions);
 
-        let angle = 0;
-        let mouseX = 0, mouseY = 0;
-        let targetMouseX = 0, targetMouseY = 0;
+        let rotationAngle = 0;
+        const mouse = { x: -1000, y: -1000, active: false };
 
         canvas.addEventListener('mousemove', (e) => {
             const rect = canvas.getBoundingClientRect();
-            targetMouseX = (e.clientX - rect.left - canvas.width / 2) * 0.002;
-            targetMouseY = (e.clientY - rect.top - canvas.height / 2) * 0.002;
+            mouse.x = e.clientX - rect.left;
+            mouse.y = e.clientY - rect.top;
+            mouse.active = true;
         });
 
         canvas.addEventListener('mouseleave', () => {
-            targetMouseX = 0;
-            targetMouseY = 0;
+            mouse.x = -1000;
+            mouse.y = -1000;
+            mouse.active = false;
         });
 
-        const numNodes = 32;
+        const numSteps = 38;
         const strandRadius = 28;
+        const rungDotsCount = 5;
+
+        // Initialize particle set
+        class DNAParticle {
+            constructor(type, indexRatio, rungFraction, color) {
+                this.type = type; // 'strand1', 'strand2', or 'rung'
+                this.indexRatio = indexRatio; // 0.0 to 1.0 along horizontal axis
+                this.rungFraction = rungFraction; // 0.0 to 1.0 between strands
+                this.color = color;
+                
+                this.x = 0;
+                this.y = 0;
+                this.vx = 0;
+                this.vy = 0;
+                this.z = 0;
+                this.scale = 1;
+            }
+
+            calculateTarget(angle, width, height) {
+                const length = Math.min(width - 20, 520);
+                const startX = (width - length) / 2;
+                const cy = height / 2;
+
+                const currentX = startX + this.indexRatio * length;
+                const nodeAngle = angle + this.indexRatio * Math.PI * 7;
+
+                if (this.type === 'strand1') {
+                    const ty = cy + Math.sin(nodeAngle) * strandRadius;
+                    const tz = Math.cos(nodeAngle) * strandRadius;
+                    return { tx: currentX, ty: ty, tz: tz };
+                } else if (this.type === 'strand2') {
+                    const ty = cy + Math.sin(nodeAngle + Math.PI) * strandRadius;
+                    const tz = Math.cos(nodeAngle + Math.PI) * strandRadius;
+                    return { tx: currentX, ty: ty, tz: tz };
+                } else {
+                    // Base-pair rung particle interpolation
+                    const y1 = cy + Math.sin(nodeAngle) * strandRadius;
+                    const z1 = Math.cos(nodeAngle) * strandRadius;
+
+                    const y2 = cy + Math.sin(nodeAngle + Math.PI) * strandRadius;
+                    const z2 = Math.cos(nodeAngle + Math.PI) * strandRadius;
+
+                    const ty = y1 + (y2 - y1) * this.rungFraction;
+                    const tz = z1 + (z2 - z1) * this.rungFraction;
+                    return { tx: currentX, ty: ty, tz: tz };
+                }
+            }
+
+            update(angle, width, height) {
+                const target = this.calculateTarget(angle, width, height);
+                this.z = target.tz;
+                this.scale = 1 + this.z / 140;
+
+                // Distortion physics when mouse approaches
+                const dx = this.x - mouse.x;
+                const dy = this.y - mouse.y;
+                const dist = Math.hypot(dx, dy);
+                const distortRadius = 75;
+
+                if (mouse.active && dist < distortRadius && dist > 0) {
+                    const force = (1 - dist / distortRadius) * 14;
+                    const anglePush = Math.atan2(dy, dx);
+                    this.vx += Math.cos(anglePush) * force;
+                    this.vy += Math.sin(anglePush) * force;
+                }
+
+                // Elastic spring force returning particle to target helix coordinate
+                const spring = 0.08;
+                const friction = 0.82;
+
+                this.vx += (target.tx - this.x) * spring;
+                this.vy += (target.ty - this.y) * spring;
+
+                this.vx *= friction;
+                this.vy *= friction;
+
+                this.x += this.vx;
+                this.y += this.vy;
+            }
+
+            draw(ctx) {
+                const alpha = (this.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
+                const baseRadius = this.type === 'rung' ? 2.2 : 3.6;
+                const radius = Math.max(0.6, baseRadius * this.scale);
+
+                ctx.save();
+                ctx.shadowBlur = (this.type === 'rung' ? 6 : 10) * this.scale;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = Math.max(0.15, alpha);
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        const particles = [];
+
+        // Build DNA Particle Mesh
+        for (let i = 0; i <= numSteps; i++) {
+            const ratio = i / numSteps;
+
+            // Strand 1 Particle (Cyan)
+            particles.push(new DNAParticle('strand1', ratio, 0, '#38bdf8'));
+
+            // Strand 2 Particle (Purple)
+            particles.push(new DNAParticle('strand2', ratio, 0, '#c084fc'));
+
+            // Nucleotide Rung Dots (Magenta / Pink)
+            for (let j = 1; j <= rungDotsCount; j++) {
+                const rungFraction = j / (rungDotsCount + 1);
+                particles.push(new DNAParticle('rung', ratio, rungFraction, '#f472b6'));
+            }
+        }
+
+        // Initialize particle positions
+        particles.forEach(p => {
+            const initTarget = p.calculateTarget(0, canvas.width, canvas.height);
+            p.x = initTarget.tx;
+            p.y = initTarget.ty;
+        });
 
         function animate() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            rotationAngle += 0.022;
 
-            mouseX += (targetMouseX - mouseX) * 0.08;
-            mouseY += (targetMouseY - mouseY) * 0.08;
+            // Update particle physics
+            particles.forEach(p => p.update(rotationAngle, canvas.width, canvas.height));
 
-            angle += 0.022 + mouseX * 0.05;
+            // Z-sorting for realistic 3D depth perception
+            particles.sort((a, b) => a.z - b.z);
 
-            const length = Math.min(canvas.width - 20, 520);
-            const startX = (canvas.width - length) / 2;
-            const stepX = length / numNodes;
-            const cy = canvas.height / 2;
-
-            let renderQueue = [];
-
-            for (let i = 0; i <= numNodes; i++) {
-                let x = startX + i * stepX;
-                let nodeAngle = angle + i * 0.24;
-
-                let y1 = Math.sin(nodeAngle) * strandRadius;
-                let z1 = Math.cos(nodeAngle) * strandRadius;
-
-                let y2 = Math.sin(nodeAngle + Math.PI) * strandRadius;
-                let z2 = Math.cos(nodeAngle + Math.PI) * strandRadius;
-
-                // Mouse Y tilt 3D rotation
-                let tiltY1 = y1 * Math.cos(mouseY) - z1 * Math.sin(mouseY);
-                let tiltZ1 = y1 * Math.sin(mouseY) + z1 * Math.cos(mouseY);
-
-                let tiltY2 = y2 * Math.cos(mouseY) - z2 * Math.sin(mouseY);
-                let tiltZ2 = y2 * Math.sin(mouseY) + z2 * Math.cos(mouseY);
-
-                let py1 = cy + tiltY1;
-                let py2 = cy + tiltY2;
-
-                let scale1 = 1 + tiltZ1 / 140;
-                let scale2 = 1 + tiltZ2 / 140;
-
-                // Base-pair connection rung
-                renderQueue.push({
-                    type: 'rung',
-                    x1: x, y1: py1, z1: tiltZ1,
-                    x2: x, y2: py2, z2: tiltZ2,
-                    avgZ: (tiltZ1 + tiltZ2) / 2
-                });
-
-                // Strand 1 node
-                renderQueue.push({
-                    type: 'node',
-                    x: x, y: py1, z: tiltZ1, scale: scale1,
-                    color: '#38bdf8'
-                });
-
-                // Strand 2 node
-                renderQueue.push({
-                    type: 'node',
-                    x: x, y: py2, z: tiltZ2, scale: scale2,
-                    color: '#c084fc'
-                });
-            }
-
-            // Depth sorting (z-index ordering)
-            renderQueue.sort((a, b) => (a.avgZ !== undefined ? a.avgZ : a.z) - (b.avgZ !== undefined ? b.avgZ : b.z));
-
-            renderQueue.forEach(item => {
-                if (item.type === 'rung') {
-                    let alpha = (item.avgZ + strandRadius) / (2 * strandRadius) * 0.5 + 0.2;
-                    ctx.strokeStyle = `rgba(129, 140, 248, ${Math.max(0.1, alpha)})`;
-                    ctx.lineWidth = 1.4;
-                    ctx.beginPath();
-                    ctx.moveTo(item.x1, item.y1);
-                    ctx.lineTo(item.x2, item.y2);
-                    ctx.stroke();
-
-                    // Center base pair nucleotide particle
-                    let mx = item.x1;
-                    let my = (item.y1 + item.y2) / 2;
-                    ctx.fillStyle = `rgba(244, 114, 182, ${alpha * 0.85})`;
-                    ctx.beginPath();
-                    ctx.arc(mx, my, 1.8, 0, Math.PI * 2);
-                    ctx.fill();
-                } else {
-                    let alpha = (item.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
-                    let radius = 3.6 * item.scale;
-
-                    ctx.save();
-                    ctx.shadowBlur = 10 * item.scale;
-                    ctx.shadowColor = item.color;
-                    ctx.fillStyle = item.color;
-                    ctx.globalAlpha = Math.max(0.15, alpha);
-                    ctx.beginPath();
-                    ctx.arc(item.x, item.y, Math.max(0.8, radius), 0, Math.PI * 2);
-                    ctx.fill();
-                    ctx.restore();
-                }
-            });
+            // Draw particles
+            particles.forEach(p => p.draw(ctx));
 
             requestAnimationFrame(animate);
         }
