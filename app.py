@@ -184,8 +184,7 @@ def inject_custom_ui_theme():
 
 
 def render_header_with_horizontal_dna():
-    """Renders page header alongside an unconstrained 3D particle horizontally-stretched rotating DNA strand in gradient blue with soft blurry ends."""
-    # Main page title container with DOM mounting target for canvas
+    """Renders page header alongside a morphing central dogma (DNA->RNA->AA->Protein) particle animation."""
     st.markdown(
         """
         <style>
@@ -229,7 +228,6 @@ def render_header_with_horizontal_dna():
         unsafe_allow_html=True,
     )
 
-    # Injected script with gradient blue color scheme and progressive end-blurring
     dna_js = """
     <script>
     (function() {
@@ -265,6 +263,7 @@ def render_header_with_horizontal_dna():
             parentDoc.defaultView.addEventListener('resize', setCanvasDimensions);
 
             let rotationAngle = 0;
+            let globalFrame = 0;
             const mouse = { x: -1000, y: -1000, active: false };
 
             canvas.addEventListener('mousemove', (e) => {
@@ -284,15 +283,12 @@ def render_header_with_horizontal_dna():
             const strandRadius = 24;
             const rungDotsCount = 5;
 
-            // Helper to interpolate gradient blue colors across the strand
             function getGradientBlueColor(ratio, type, rungFraction) {
-                // Electric Sky Blue -> Royal Blue -> Cobalt Gradient
                 if (type === 'strand1') {
-                    return ratio < 0.5 ? '#38bdf8' : '#60a5fa'; // Bright Cyan-Blue to Sky Blue
+                    return ratio < 0.5 ? '#38bdf8' : '#60a5fa'; 
                 } else if (type === 'strand2') {
-                    return ratio < 0.5 ? '#2563eb' : '#1d4ed8'; // Royal Blue to Sapphire
+                    return ratio < 0.5 ? '#2563eb' : '#1d4ed8'; 
                 } else {
-                    // Nucleotide rungs: soft intermediate blue gradient
                     return rungFraction < 0.5 ? '#0284c7' : '#3b82f6';
                 }
             }
@@ -300,7 +296,7 @@ def render_header_with_horizontal_dna():
             class DNAParticle {
                 constructor(type, indexRatio, rungFraction) {
                     this.type = type;
-                    this.indexRatio = indexRatio; // 0.0 (left) to 1.0 (right)
+                    this.indexRatio = indexRatio; 
                     this.rungFraction = rungFraction;
                     this.color = getGradientBlueColor(indexRatio, type, rungFraction);
                     
@@ -312,33 +308,109 @@ def render_header_with_horizontal_dna():
                     this.scale = 1;
                 }
 
-                calculateTarget(angle, width, height) {
+                getTargetDNA(angle, width, height) {
                     const length = width - 180;
                     const startX = 90;
                     const cy = height / 2;
-
                     const currentX = startX + this.indexRatio * length;
                     const nodeAngle = angle + this.indexRatio * Math.PI * 3.6;
 
                     if (this.type === 'strand1') {
-                        const ty = cy + Math.sin(nodeAngle) * strandRadius;
-                        const tz = Math.cos(nodeAngle) * strandRadius;
-                        return { tx: currentX, ty: ty, tz: tz };
+                        return { tx: currentX, ty: cy + Math.sin(nodeAngle) * strandRadius, tz: Math.cos(nodeAngle) * strandRadius };
                     } else if (this.type === 'strand2') {
-                        const ty = cy + Math.sin(nodeAngle + Math.PI) * strandRadius;
-                        const tz = Math.cos(nodeAngle + Math.PI) * strandRadius;
-                        return { tx: currentX, ty: ty, tz: tz };
+                        return { tx: currentX, ty: cy + Math.sin(nodeAngle + Math.PI) * strandRadius, tz: Math.cos(nodeAngle + Math.PI) * strandRadius };
                     } else {
                         const y1 = cy + Math.sin(nodeAngle) * strandRadius;
                         const z1 = Math.cos(nodeAngle) * strandRadius;
-
                         const y2 = cy + Math.sin(nodeAngle + Math.PI) * strandRadius;
                         const z2 = Math.cos(nodeAngle + Math.PI) * strandRadius;
-
-                        const ty = y1 + (y2 - y1) * this.rungFraction;
-                        const tz = z1 + (z2 - z1) * this.rungFraction;
-                        return { tx: currentX, ty: ty, tz: tz };
+                        return { tx: currentX, ty: y1 + (y2 - y1) * this.rungFraction, tz: z1 + (z2 - z1) * this.rungFraction };
                     }
+                }
+
+                getTargetRNA(angle, width, height) {
+                    const length = width - 180;
+                    const startX = 90;
+                    const cy = height / 2;
+                    const currentX = startX + this.indexRatio * length;
+                    const nodeAngle = angle * 1.5 + this.indexRatio * Math.PI * 4;
+
+                    const offsetAmplitude = 5;
+                    let oy = 0, oz = 0;
+                    if (this.type === 'strand2') { oy = offsetAmplitude; }
+                    else if (this.type === 'rung') { oy = -offsetAmplitude * this.rungFraction; oz = offsetAmplitude * this.rungFraction; }
+
+                    return {
+                        tx: currentX,
+                        ty: cy + Math.sin(nodeAngle) * (strandRadius * 0.8) + oy,
+                        tz: Math.cos(nodeAngle) * (strandRadius * 0.8) + oz
+                    };
+                }
+
+                getTargetAA(angle, width, height) {
+                    const length = (width - 180) * 0.8;
+                    const startX = 90 + (width - 180) * 0.1;
+                    const cy = height / 2;
+
+                    const aaCount = 18; 
+                    const snappedRatio = Math.round(this.indexRatio * aaCount) / aaCount;
+
+                    const tx = startX + snappedRatio * length;
+                    const ty = cy + Math.sin(angle * 0.5 + snappedRatio * Math.PI * 2) * 12;
+                    const tz = Math.cos(angle * 0.5 + snappedRatio * Math.PI * 2) * 12;
+
+                    const hash1 = Math.sin(this.indexRatio * 1111 + (this.rungFraction || 0) * 123) * 6;
+                    const hash2 = Math.cos(this.indexRatio * 2222 + (this.rungFraction || 0) * 234) * 6;
+                    const hash3 = Math.sin(this.indexRatio * 3333 - (this.rungFraction || 0) * 345) * 6;
+
+                    return { tx: tx + hash1, ty: ty + hash2, tz: tz + hash3 };
+                }
+
+                getTargetProtein(angle, width, height) {
+                    const centerX = width / 2;
+                    const cy = height / 2;
+                    const aaCount = 18;
+                    const snappedRatio = Math.round(this.indexRatio * aaCount) / aaCount;
+
+                    const t = snappedRatio * Math.PI * 6 + angle * 0.4;
+                    const r = 50;
+
+                    const baseTx = centerX + Math.sin(t) * r * Math.cos(t * 0.5);
+                    const baseTy = cy + Math.sin(t * 1.2) * r;
+                    const baseTz = Math.cos(t * 0.8) * r;
+
+                    const hash1 = Math.sin(this.indexRatio * 1111 + (this.rungFraction || 0) * 123) * 8;
+                    const hash2 = Math.cos(this.indexRatio * 2222 + (this.rungFraction || 0) * 234) * 8;
+                    const hash3 = Math.sin(this.indexRatio * 3333 - (this.rungFraction || 0) * 345) * 8;
+
+                    return { tx: baseTx + hash1, ty: baseTy + hash2, tz: baseTz + hash3 };
+                }
+
+                calculateTarget(angle, width, height) {
+                    const cycle = 1600; 
+                    const f = globalFrame % cycle;
+                    const state = Math.floor(f / 400);
+                    const nextState = (state + 1) % 4;
+                    const localF = f % 400;
+
+                    let lerpFactor = Math.max(0, Math.min(1, localF / 140));
+                    lerpFactor = lerpFactor * lerpFactor * (3 - 2 * lerpFactor); 
+
+                    const targets = [
+                        this.getTargetDNA(angle, width, height),
+                        this.getTargetRNA(angle, width, height),
+                        this.getTargetAA(angle, width, height),
+                        this.getTargetProtein(angle, width, height)
+                    ];
+
+                    const t1 = targets[state];
+                    const t2 = targets[nextState];
+
+                    return {
+                        tx: t1.tx + (t2.tx - t1.tx) * lerpFactor,
+                        ty: t1.ty + (t2.ty - t1.ty) * lerpFactor,
+                        tz: t1.tz + (t2.tz - t1.tz) * lerpFactor
+                    };
                 }
 
                 update(angle, width, height) {
@@ -374,15 +446,11 @@ def render_header_with_horizontal_dna():
                 }
 
                 draw(ctx) {
-                    // Edge Factor: 1 at center, smoothly tapering down towards 0 at both ends
                     const edgeFactor = Math.sin(this.indexRatio * Math.PI);
-
-                    // Alpha gradually softens towards both ends (from 100% to ~38%)
                     const depthAlpha = (this.z + strandRadius) / (2 * strandRadius) * 0.65 + 0.35;
                     const edgeAlphaMultiplier = 0.38 + 0.62 * edgeFactor;
                     const alpha = depthAlpha * edgeAlphaMultiplier;
 
-                    // Blur increases gradually towards both ends for a soft out-of-focus glow
                     const endBlurAddition = (1 - edgeFactor) * 8.5;
                     const baseBlur = this.type === 'rung' ? 5 : 10;
 
@@ -403,7 +471,6 @@ def render_header_with_horizontal_dna():
 
             const particles = [];
 
-            // Construct Mesh
             for (let i = 0; i <= numSteps; i++) {
                 const ratio = i / numSteps;
 
@@ -417,7 +484,7 @@ def render_header_with_horizontal_dna():
             }
 
             particles.forEach(p => {
-                const initTarget = p.calculateTarget(0, canvas.width, canvas.height);
+                const initTarget = p.getTargetDNA(0, canvas.width, canvas.height);
                 p.x = initTarget.tx;
                 p.y = initTarget.ty;
             });
@@ -425,6 +492,7 @@ def render_header_with_horizontal_dna():
             function animate() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 rotationAngle += 0.02;
+                globalFrame++;
 
                 particles.forEach(p => p.update(rotationAngle, canvas.width, canvas.height));
                 particles.sort((a, b) => a.z - b.z);
