@@ -45,7 +45,7 @@ AA_NAMES = {
 
 
 def inject_custom_ui_theme():
-    """Injects dynamic breathing background, glassmorphism UI, and equal-sized side-by-side radio cards."""
+    """Injects dynamic breathing background, glassmorphism UI, equal-sized side-by-side radio cards, and cursor interactive animation."""
     css = """
     <style>
     @keyframes breathingGradient {
@@ -172,6 +172,88 @@ def inject_custom_ui_theme():
         box-shadow: 0 0 15px rgba(56, 189, 248, 0.2) !important;
     }
     </style>
+
+    <canvas id="cursor-particle-canvas" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 99999;"></canvas>
+
+    <script>
+    (function() {
+        const parentDoc = window.parent.document;
+        let canvas = parentDoc.getElementById('cursor-particle-canvas');
+        
+        if (!canvas) {
+            canvas = parentDoc.createElement('canvas');
+            canvas.id = 'cursor-particle-canvas';
+            canvas.style.position = 'fixed';
+            canvas.style.top = '0';
+            canvas.style.left = '0';
+            canvas.style.width = '100vw';
+            canvas.style.height = '100vh';
+            canvas.style.pointerEvents = 'none';
+            canvas.style.zIndex = '99999';
+            parentDoc.body.appendChild(canvas);
+        }
+
+        const ctx = canvas.getContext('2d');
+        let width = canvas.width = parentDoc.documentElement.clientWidth || window.innerWidth;
+        let height = canvas.height = parentDoc.documentElement.clientHeight || window.innerHeight;
+
+        function updateBounds() {
+            width = canvas.width = parentDoc.documentElement.clientWidth || window.innerWidth;
+            height = canvas.height = parentDoc.documentElement.clientHeight || window.innerHeight;
+        }
+
+        parentDoc.defaultView.addEventListener('resize', updateBounds);
+
+        const particles = [];
+        const colors = ['#38bdf8', '#818cf8', '#c084fc', '#3b82f6', '#0284c7'];
+
+        parentDoc.addEventListener('mousemove', function(e) {
+            for (let i = 0; i < 3; i++) {
+                particles.push({
+                    x: e.clientX,
+                    y: e.clientY,
+                    vx: (Math.random() - 0.5) * 1.8,
+                    vy: (Math.random() - 0.5) * 1.8,
+                    radius: Math.random() * 3 + 1,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    alpha: 0.85,
+                    decay: Math.random() * 0.02 + 0.015
+                });
+            }
+        });
+
+        function renderParticles() {
+            ctx.clearRect(0, 0, width, height);
+
+            for (let i = 0; i < particles.length; i++) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.decay;
+
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                    i--;
+                    continue;
+                }
+
+                ctx.save();
+                ctx.globalAlpha = p.alpha;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = p.color;
+                ctx.fill();
+                ctx.restore();
+            }
+
+            requestAnimationFrame(renderParticles);
+        }
+
+        renderParticles();
+    })();
+    </script>
     """
     st.markdown(css, unsafe_allow_html=True)
 
